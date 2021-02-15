@@ -143,7 +143,7 @@ def normalise(vid, background, mu0, calc):
         # conditional statement, which calculates mu appropriately depending
         # on which channel is currently being processed.
         if calc == "MEAN":
-            mu = np.quantile(mu, 0.75)
+            mu = np.quantile(mu, 0.75)  # check this is right
         elif calc == "UPPER_Q":
             mu = np.quantile(mu, 0.75)
 

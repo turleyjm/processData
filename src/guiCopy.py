@@ -14,6 +14,7 @@ class FileType(Enum):
     STACK = 0
     ECAD_MODEL = 1
     HTWO_MODEL = 2
+    OOPWO_MODEL = 3
 
 
 # Everything else in this file is the definition of the GUI class
@@ -27,6 +28,7 @@ class GUI:
         focus_range=0,
         ecad_model_path="",
         h2_model_path="",
+        outOfPlane_model_path="",
         save_focus=True,
         save_norm=True,
         save_prob=True,
@@ -39,6 +41,7 @@ class GUI:
         self.focus_range = focus_range
         self.ecad_model_path = ecad_model_path
         self.h2_model_path = h2_model_path
+        self.outOfPlane_model_path = outOfPlane_model_path
         self.save_focus = save_focus
         self.save_norm = save_norm
         self.save_prob = save_prob
@@ -98,6 +101,14 @@ class GUI:
             FileType.HTWO_MODEL,
             "Select H2 model file",
             default=self.h2_model_path,
+        )
+        row += 1
+        self._create_file_selection(
+            root,
+            row,
+            FileType.OOPWO_MODEL,
+            "Select Out of Plane model file",
+            default=self.outOfPlane_model_path,
         )
 
         row += 1
@@ -167,6 +178,8 @@ class GUI:
             self.ecad_model_path = path
         elif file_type == FileType.HTWO_MODEL:
             self.h2_model_path = path
+        elif file_type == FileType.OOPWO_MODEL:
+            self.outOfPlane_model_path = path
 
     # This sets the text of each button.  If it's less than 25 characters long
     # the whole text is displayed.  Otherwise, it's a shortened form.

@@ -25,6 +25,7 @@ def process_stack(
     focus_range,
     model_path_Ecad,
     model_path_H2,
+    model_path_outOfPlane,
     save_focus,
     save_norm,
     save_prob,
@@ -79,6 +80,7 @@ def process_stack(
     # function.  Since this macro loads an image, we need to update it to
     # hard-code the input image path.
     ecadFocus_np = focusStack(ij, ecad_np, 9)[1]
+    ecad_ij2 = 0
 
     # If selected in the GUI, this saves the focussed image to the same place as
     # the input file, but with the suffix "_Focussed".
@@ -90,6 +92,7 @@ def process_stack(
     # Focussing the image stack H2
 
     h2Focus_np = focusStack(ij, h2_np, 9)[1]
+    h2_ij2 = 0
 
     if save_focus:
         outname = "%s_h2Focussed.tif" % root_path
@@ -120,6 +123,20 @@ def process_stack(
         outname = "%s_eacdNorm.tif" % root_path
         save_ij2(ij, ecadfocus_ij2, outname)
 
+    # H2
+
+    h2focus_np = ij.py.from_java(h2focus_ij2)
+
+    h2focus_np.values = normalise(h2focus_np.values, "UPPER_Q", 90)
+    h2focus_ij2 = ij.py.to_dataset(h2focus_np)
+
+    if save_norm:
+        outname = "%s_h2Norm.tif" % root_path
+        save_ij2(ij, h2focus_ij2, outname)
+
+    print("Running pixel classification (WEKA) Ecad")
+    framesMax = 7
+
     ### APPLYING PIXEL CLASSIFICATION (WEKA) ###
     # For WEKA pixel classification we go back to processing in ImageJ; however,
     # this time we can't run it as a simple macro.  This is a limitation of the
@@ -130,21 +147,9 @@ def process_stack(
     # directly we can load in the .model classifier file and run classification
     # on a specific image.
 
-    # H2
-
-    h2focus_np = ij.py.from_java(h2focus_ij2)
-
-    h2focus_np.values = normalise(h2focus_np.values, "UPPER_Q", 70)
-    h2focus_ij2 = ij.py.to_dataset(h2focus_np)
-
-    if save_norm:
-        outname = "%s_h2Norm.tif" % root_path
-        save_ij2(ij, h2focus_ij2, outname)
-
-    print("Running pixel classification (WEKA) Ecad")
-
     weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
     weka.loadClassifier(model_path_Ecad)
+    # ecadprob_ij2 = apply_weka(ij, weka, ecadfocus_ij2)
 
     # The apply_weka function takes our current ImageJ2 DefaultDataset object as
     # an input; however, it will convert it to ImageJ1 format when passing it to
@@ -153,64 +158,99 @@ def process_stack(
     # outputs a new ImageJ2 DefaultDataset object containing the probability
     # maps.
 
-    if T < 62:
-        ecadprob_ij2 = apply_weka(ij, weka, ecadfocus_ij2)
-    else:
-        split = int(T / 61 - 1)
-        stack_np = ecadfocus_np[0:61]
-        stack_ij2 = ij.py.to_dataset(stack_np)
-        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_np = ij.py.from_java(stackprob_ij2)
+    stackprob_np = np.zeros([T, X, Y])
+    split = int(T / framesMax - 1)
+    stack_np = ecadfocus_np[0:framesMax]
+    stack_ij2 = ij.py.to_dataset(stack_np)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob_np[0:framesMax] = ij.py.from_java(stackprob_ij2).values
 
-        for i in range(split):
-            stack_np = ecadfocus_np[0 + 61 * (i + 1) : 61 + 61 * (i + 1)]
-            stack_ij2 = ij.py.to_dataset(stack_np)
-            stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-            stackprob_npi = ij.py.from_java(stackprob_ij2)
-            stackprob_np = np.concatenate(stackprob_np, stackprob_npi)
-
-        stack_np = ecadfocus_np[0 + 61 * (i + 2) : -1]
+    for i in range(split):
+        stack_np = ecadfocus_np[framesMax * (i + 1) : framesMax + framesMax * (i + 1)]
         stack_ij2 = ij.py.to_dataset(stack_np)
         stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
         stackprob_npi = ij.py.from_java(stackprob_ij2)
-        stackprob_np = np.concatenate(stackprob_np, stackprob_npi)
-        ecadprob_ij2 = ij.py.to_dataset(stack_np)
+        stackprob_np[
+            framesMax * (i + 1) : framesMax + framesMax * (i + 1)
+        ] = stackprob_npi.values
+
+    stack_np = ecadfocus_np[framesMax * (i + 2) :]
+    stack_ij2 = ij.py.to_dataset(stack_np)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob_npi = ij.py.from_java(stackprob_ij2)
+    stackprob_np[framesMax * (i + 2) :] = stackprob_npi.values
+    ecadprob_ij2 = ij.py.to_dataset(stackprob_np.astype("uint8"))
+
+    if save_prob:
+        outname = "%s_ecadProb.tif" % root_path
+        save_ij2(ij, ecadprob_ij2, outname)
 
     print("Running pixel classification (WEKA) H2")
 
     weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
     weka.loadClassifier(model_path_H2)
+    # h2prob_ij2 = apply_weka(ij, weka, h2focus_ij2)
 
-    if T < 62:
-        h2prob_ij2 = apply_weka(ij, weka, h2focus_ij2)
-    else:
-        split = int(T / 61 - 1)
-        stack_np = h2focus_np[0:61]
-        stack_ij2 = ij.py.to_dataset(stack_np)
-        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_np = ij.py.from_java(stackprob_ij2)
+    stackprob_np = np.zeros([T, X, Y])
+    split = int(T / framesMax - 1)
+    stack_np = h2focus_np[0:framesMax]
+    stack_ij2 = ij.py.to_dataset(stack_np)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob_np[0:framesMax] = ij.py.from_java(stackprob_ij2).values
 
-        for i in range(split):
-            stack_np = h2focus_np[0 + 61 * (i + 1) : 61 + 61 * (i + 1)]
-            stack_ij2 = ij.py.to_dataset(stack_np)
-            stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-            stackprob_npi = ij.py.from_java(stackprob_ij2)
-            stackprob_np = np.concatenate(stackprob_np, stackprob_npi)
-
-        stack_np = h2focus_np[0 + 61 * (i + 2) : -1]
+    for i in range(split):
+        stack_np = h2focus_np[framesMax * (i + 1) : framesMax + framesMax * (i + 1)]
         stack_ij2 = ij.py.to_dataset(stack_np)
         stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
         stackprob_npi = ij.py.from_java(stackprob_ij2)
-        stackprob_np = np.concatenate(stackprob_np, stackprob_npi)
-        j2prob_ij2 = ij.py.to_dataset(stack_np)
+        stackprob_np[
+            framesMax * (i + 1) : framesMax + framesMax * (i + 1)
+        ] = stackprob_npi.values
+
+    stack_np = h2focus_np[framesMax * (i + 2) :]
+    stack_ij2 = ij.py.to_dataset(stack_np)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob_npi = ij.py.from_java(stackprob_ij2)
+    stackprob_np[framesMax * (i + 2) :] = stackprob_npi.values
+    h2prob_ij2 = ij.py.to_dataset(stackprob_np.astype("uint8"))
 
     # If selected in the GUI, this saves the probability image to the same place
     # as the input file, but with the suffix "_Prob".
     if save_prob:
-        outname = "%s_ecadProb.tif" % root_path
-        save_ij2(ij, ecadprob_ij2, outname)
         outname = "%s_h2Prob.tif" % root_path
         save_ij2(ij, h2prob_ij2, outname)
+
+    print("Running pixel classification (WEKA) out of plane")
+
+    weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
+    weka.loadClassifier(model_path_outOfPlane)
+
+    stackprob_np = np.zeros([T, X, Y])
+    split = int(T / framesMax - 1)
+    stack_np = ecadfocus_np[0:framesMax]
+    stack_ij2 = ij.py.to_dataset(stack_np)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob_np[0:framesMax] = ij.py.from_java(stackprob_ij2).values
+
+    for i in range(split):
+        stack_np = ecadfocus_np[framesMax * (i + 1) : framesMax + framesMax * (i + 1)]
+        stack_ij2 = ij.py.to_dataset(stack_np)
+        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+        stackprob_npi = ij.py.from_java(stackprob_ij2)
+        stackprob_np[
+            framesMax * (i + 1) : framesMax + framesMax * (i + 1)
+        ] = stackprob_npi.values
+
+    stack_np = ecadfocus_np[framesMax * (i + 2) :]
+    stack_ij2 = ij.py.to_dataset(stack_np)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob_npi = ij.py.from_java(stackprob_ij2)
+    stackprob_np[framesMax * (i + 2) :] = stackprob_npi.values
+    OOPprob_ij2 = ij.py.to_dataset(stackprob_np.astype("uint8"))
+
+    if save_prob:
+        outname = "%s_outOfPlaneProb.tif" % root_path
+        save_ij2(ij, OOPprob_ij2, outname)
 
 
 # -----------------
@@ -401,6 +441,7 @@ def apply_weka(ij, classifier, image_ij2):
     # Applying classifier using the WekaSegmentation class' "applyClassifier"
     # function.  This returns a new ImageJ1 image (ImagePlus format).
     prob_ij1 = classifier.applyClassifier(image_ij1, 6, True)
+    print("-----------------------------------------------------------")
 
     # At the moment, the probability image is a single stack with alternating
     # predicted classes, so we want to convert it into a multidimensional stack.
@@ -412,8 +453,13 @@ def apply_weka(ij, classifier, image_ij2):
     n_frames = image_ij1.getNChannels()
     prob_ij1.setDimensions(n_channels, 1, n_frames)
 
+    prob_ij2 = ij.py.to_dataset(prob_ij1)
+    prob_np = ij.py.from_java(prob_ij2).astype("float16").values * 255
+    prob_np = prob_np.astype("uint8")[:, 0]
+    prob_ij2 = ij.py.to_dataset(prob_np)
+
     # Converting the probability image to ImageJ2 format, so it can be saved.
-    return ij.py.to_dataset(prob_ij1)
+    return prob_ij2
 
 
 # This function saves ImageJ2 format images to the specified output file path.

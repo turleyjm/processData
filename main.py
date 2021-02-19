@@ -1,10 +1,10 @@
 ### IMPORTS ###
 import configparser
-import guiCopy
+import gui
 import imagej
 import os
 import scyjava as sj
-import utilCopy
+import util
 
 from pathlib import Path
 
@@ -41,7 +41,7 @@ else:
 # the dict doesn't contain the key we're looking for (e.g. this should only be
 # the case if we've not run this script on a computer before) it will instead
 # use that fallback value.
-g = guiCopy.GUI(
+g = gui.GUI(
     stack_path=defaults.get("ecad_path", ""),
     focus_range=defaults.get("focus_range", 5),
     ecad_model_path=defaults.get("ecad_model_path", ""),
@@ -118,7 +118,7 @@ print("Processing image")
 # Furthermore, the numeric values are converted from strings (the GUI output)
 # into integers.  The third argument controls the mu calculation during
 # intensity normalisation.
-utilCopy.process_stack(
+util.process_stack(
     ij,
     g.stack_path,
     int(g.focus_range),

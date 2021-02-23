@@ -3,326 +3,182 @@ import os
 import scyjava as sj
 import scipy
 from scipy import ndimage
+import skimage as sm
+import skimage.io
+import tifffile
 
-# This file contains the main processing functions.
-#
-# Note: ImageJ is currently undergoing a transformation behind the scenes.
-# While the ImageJ GUI looks the same as it always has done, ImageJ2 uses a
-# completely different method for storing images.  This format scales better
-# with massive datasets (e.g. it can break them down into chunks) and works with
-# more than 5 dimensions (the limit for ImageJ1).  As such, when working with
-# PyImageJ, depending on what you're currently doing,  you may need to switch
-# between ImageJ1, ImageJ2 and Numpy image formats.  The way this project worked
-# out, I’ve had to use all three formats, so you'll see examples of each
-# approach.
 
-# This is the main image processing function.  It takes all the parameters we
-# defined in the GUI and uses them to run the steps of the analysis - focusing,
-# normalisation and WEKA.
-def process_stack(
-    ij,
-    input_path,
-    model_path_Ecad,
-    model_path_H2,
-    model_path_outOfPlane,
-    carryOn,
-):
-    # Splitting the main filename from the file extension.  This is because we
-    # will later on append information about the file being saved to the end of
-    # the filename (e.g. "_Focused")
-    (root_path, file_ext) = os.path.splitext(input_path)
+def process_stack(filename):
 
     print("Finding Surface")
 
-    ecadMacro = get_ecad_macro(root_path + file_ext)
+    stackFile = f"datProcessing/{filename}/{filename}.tif"
+    stack = sm.io.imread(stackFile).astype(int)
 
-    ij.script().run("macro.ijm", ecadMacro, True).get()
+    (T, Z, C, Y, X) = stack.shape
 
-    ecad_ij2 = ij.py.active_dataset()
-    ecad_np = ij.py.from_java(ecad_ij2)
-    (T, Z, Y, X) = ecad_np.shape
-
-    surface_np = getSurface(ecad_np)
-    surface_ij2 = ij.py.to_dataset(surface_np)
+    surface = getSurface(stack[:, :, 0])
     save = True
     if save:
-        outname = "%s_surface.tif" % root_path
-        save_ij2(ij, surface_ij2, outname)
+        surface = np.asarray(surface, "uint8")
+        tifffile.imwrite(f"datProcessing/{filename}/surface{filename}.tif", surface)
 
     print("Filtering Height")
 
-    heightFilter(ecad_np, surface_np)
+    ecad = heightFilter(stack[:, :, 0], surface)
+    for t in range(T):
+        stack[t, :, 1] = ndimage.median_filter(stack[t, :, 1], size=(3, 3, 3))
 
-    h2Macro = get_h2_macro(root_path + file_ext)
-    ij.script().run("macro.ijm", h2Macro, True).get()
+    tifffile.imwrite(
+        f"datProcessing/{filename}/migration{filename}.tif", stack[:, :, 1]
+    )
+    h2 = heightFilter(stack[:, :, 1], surface)
+    stack = 0
 
-    h2_ij2 = ij.py.active_dataset()
-    h2_np = ij.py.from_java(h2_ij2)
-
-    heightFilter(h2_np, surface_np)
-
-    save = False
+    save = True
     if save:
-        outname = "%s_ecadHeight.tif" % root_path
-        save_ij2(ij, ecad_ij2, outname)
-        outname = "%s_h2Height.tif" % root_path
-        save_ij2(ij, h2_ij2, outname)
+        ecad = np.asarray(ecad, "uint8")
+        tifffile.imwrite(f"datProcessing/{filename}/ecadHeight{filename}.tif", ecad)
+        h2 = np.asarray(h2, "uint8")
+        tifffile.imwrite(f"datProcessing/{filename}/h2Height{filename}.tif", h2)
 
-    ### FOCUSING THE IMAGES ###
-    # Running focus macro (using "get" on the end so the scipt waits until the
-    # macro is complete)
     print("Focussing the image stack")
 
-    # This function gets the macro text, which is stored in the get_focus_macro
-    # function.  Since this macro loads an image, we need to update it to
-    # hard-code the input image path.
-    ecadFocus_np = focusStack(ij, ecad_np, 9)[1]
-    ecad_ij2 = 0
+    ecadFocus = focusStack(ecad, 9)[1]
+    h2Focus = focusStack(h2, 9)[1]
 
-    # If selected in the GUI, this saves the focussed image to the same place as
-    # the input file, but with the suffix "_Focussed".
-    outname = "%s_ecadFocussed.tif" % root_path
-    ecadfocus_ij2 = ij.py.to_dataset(ecadFocus_np)
-    save_ij2(ij, ecadfocus_ij2, outname)
+    save = True
+    if save:
+        ecadFocus = np.asarray(ecadFocus, "uint8")
+        tifffile.imwrite(f"datProcessing/{filename}/ecadFocus{filename}.tif", ecadFocus)
+        h2Focus = np.asarray(h2Focus, "uint8")
+        tifffile.imwrite(f"datProcessing/{filename}/h2Focus{filename}.tif", h2Focus)
 
-    # Focussing the image stack H2
-
-    h2Focus_np = focusStack(ij, h2_np, 9)[1]
-    h2_ij2 = 0
-
-    outname = "%s_h2Focussed.tif" % root_path
-    h2focus_ij2 = ij.py.to_dataset(h2Focus_np)
-    save_ij2(ij, h2focus_ij2, outname)
-
-    ### APPLYING NORMALISATION ###
-    # For the normalisation process, we are doing processing in Python, so we
-    # need to convert the ImageJ2 DefaultDataset that we got from the focussing
-    # step into a Numpy array.  Fortunately, PyImageJ has some handy functions
-    # which do this for us.
     print("Normalising images")
 
-    # Ecad
-    ecadfocus_np = ij.py.from_java(ecadfocus_ij2)
+    ecadNormalise = normalise(ecadFocus, "MEDIAN", 25)
+    h2Normalise = normalise(h2Focus, "UPPER_Q", 60)
 
-    # Running the normalise function defined later on in this file.  This will
-    # update the input focus_np image.
-    ecadfocus_np = normalise(ecadfocus_np.values, "MEDIAN", 30)
-    ecadfocus_ij2 = ij.py.to_dataset(ecadfocus_np)
+    save = True
+    if save:
+        ecadNormalise = np.asarray(ecadNormalise, "uint8")
+        tifffile.imwrite(
+            f"datProcessing/{filename}/ecadNormalise{filename}.tif", ecadNormalise
+        )
+        h2Normalise = np.asarray(h2Normalise, "uint8")
+        tifffile.imwrite(
+            f"datProcessing/{filename}/h2Normalise{filename}.tif", h2Normalise
+        )
 
-    # If selected in the GUI, this saves the normalised image to the same place
-    # as the input file, but with the suffix "_Norm".  While we did the
-    # processing for this step in Python, with the image as a Numpy array, the
-    # ImageJ2 DefaultDataset and the Numpy array still correspond to the same
-    # image in memory, so we can save using the ImageJ2 DefaultDataset.
 
-    outname = "%s_eacdNorm.tif" % root_path
-    save_ij2(ij, ecadfocus_ij2, outname)
+def weka(
+    ij,
+    filename,
+    model_path,
+    channel,
+    name,
+):
 
-    # H2
+    framesMax = 7
+    weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
+    weka.loadClassifier(model_path)
 
-    h2focus_np = ij.py.from_java(h2focus_ij2)
+    ecadFile = f"datProcessing/{filename}/{channel}Normalise{filename}.tif"
+    ecad = sm.io.imread(ecadFile).astype(int)
 
-    h2focus_np.values = normalise(h2focus_np.values, "UPPER_Q", 90)
-    h2focus_ij2 = ij.py.to_dataset(h2focus_np)
+    (T, X, Y) = ecad.shape
 
-    outname = "%s_h2Norm.tif" % root_path
-    save_ij2(ij, h2focus_ij2, outname)
+    stackprob = np.zeros([T, X, Y])
+    split = int(T / framesMax - 1)
+    stack = ecad[0:framesMax]
+    stack_ij2 = ij.py.to_dataset(stack)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob[0:framesMax] = ij.py.from_java(stackprob_ij2).values
 
-    ### APPLYING PIXEL CLASSIFICATION (WEKA) ###
-    # For WEKA pixel classification we go back to processing in ImageJ; however,
-    # this time we can't run it as a simple macro.  This is a limitation of the
-    # WEKA plugin, that it can't be run in headless mode as a macro.  Instead,
-    # we use ScyJava's jimport to create an instance of the
-    # WekaSegmentation Java class.  We're then able to use this class with all
-    # it's associated functions.  By accessing the WekaSegmentation class
-    # directly we can load in the .model classifier file and run classification
-    # on a specific image.
+    j = 1
+    print(f" part {j} -----------------------------------------------------------")
+    j += 1
 
-    if carryOn:
-
-        print("Running pixel classification (WEKA) Ecad")
-        framesMax = 7
-
-        weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
-        weka.loadClassifier(model_path_Ecad)
-        # ecadprob_ij2 = apply_weka(ij, weka, ecadfocus_ij2)
-
-        # The apply_weka function takes our current ImageJ2 DefaultDataset object as
-        # an input; however, it will convert it to ImageJ1 format when passing it to
-        # WEKA - this is simply because the WekaSegmentation class hasn't been
-        # designed to work with the newer ImageJ2 format.  The apply_weka function
-        # outputs a new ImageJ2 DefaultDataset object containing the probability
-        # maps.
-
-        stackprob_np = np.zeros([T, X, Y])
-        split = int(T / framesMax - 1)
-        stack_np = ecadfocus_np[0:framesMax]
-        stack_ij2 = ij.py.to_dataset(stack_np)
+    for i in range(split):
+        stack = ecad[framesMax * (i + 1) : framesMax + framesMax * (i + 1)]
+        stack_ij2 = ij.py.to_dataset(stack)
         stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_np[0:framesMax] = ij.py.from_java(stackprob_ij2).values
+        stackprob[
+            framesMax * (i + 1) : framesMax + framesMax * (i + 1)
+        ] = ij.py.from_java(stackprob_ij2).values
 
-        for i in range(split):
-            stack_np = ecadfocus_np[
-                framesMax * (i + 1) : framesMax + framesMax * (i + 1)
-            ]
-            stack_ij2 = ij.py.to_dataset(stack_np)
-            stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-            stackprob_npi = ij.py.from_java(stackprob_ij2)
-            stackprob_np[
-                framesMax * (i + 1) : framesMax + framesMax * (i + 1)
-            ] = stackprob_npi.values
+        print(f" part {j} -----------------------------------------------------------")
+        j += 1
 
-        stack_np = ecadfocus_np[framesMax * (i + 2) :]
-        stack_ij2 = ij.py.to_dataset(stack_np)
-        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_npi = ij.py.from_java(stackprob_ij2)
-        stackprob_np[framesMax * (i + 2) :] = stackprob_npi.values
-        ecadprob_ij2 = ij.py.to_dataset(stackprob_np.astype("uint8"))
+    stack = ecad[framesMax * (i + 2) :]
+    stack_ij2 = ij.py.to_dataset(stack)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+    stackprob[framesMax * (i + 2) :] = ij.py.from_java(stackprob_ij2).values
 
-        outname = "%s_ecadProb.tif" % root_path
-        save_ij2(ij, ecadprob_ij2, outname)
+    print(f" part {j} -----------------------------------------------------------")
+    j += 1
 
-        print("Running pixel classification (WEKA) H2")
-
-        weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
-        weka.loadClassifier(model_path_H2)
-        # h2prob_ij2 = apply_weka(ij, weka, h2focus_ij2)
-
-        stackprob_np = np.zeros([T, X, Y])
-        split = int(T / framesMax - 1)
-        stack_np = h2focus_np[0:framesMax]
-        stack_ij2 = ij.py.to_dataset(stack_np)
-        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_np[0:framesMax] = ij.py.from_java(stackprob_ij2).values
-
-        for i in range(split):
-            stack_np = h2focus_np[framesMax * (i + 1) : framesMax + framesMax * (i + 1)]
-            stack_ij2 = ij.py.to_dataset(stack_np)
-            stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-            stackprob_npi = ij.py.from_java(stackprob_ij2)
-            stackprob_np[
-                framesMax * (i + 1) : framesMax + framesMax * (i + 1)
-            ] = stackprob_npi.values
-
-        stack_np = h2focus_np[framesMax * (i + 2) :]
-        stack_ij2 = ij.py.to_dataset(stack_np)
-        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_npi = ij.py.from_java(stackprob_ij2)
-        stackprob_np[framesMax * (i + 2) :] = stackprob_npi.values
-        h2prob_ij2 = ij.py.to_dataset(stackprob_np.astype("uint8"))
-
-        # If selected in the GUI, this saves the probability image to the same place
-        # as the input file, but with the suffix "_Prob".
-
-        outname = "%s_h2Prob.tif" % root_path
-        save_ij2(ij, h2prob_ij2, outname)
-
-        print("Running pixel classification (WEKA) out of plane")
-
-        weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
-        weka.loadClassifier(model_path_outOfPlane)
-
-        stackprob_np = np.zeros([T, X, Y])
-        split = int(T / framesMax - 1)
-        stack_np = ecadfocus_np[0:framesMax]
-        stack_ij2 = ij.py.to_dataset(stack_np)
-        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_np[0:framesMax] = ij.py.from_java(stackprob_ij2).values
-
-        for i in range(split):
-            stack_np = ecadfocus_np[
-                framesMax * (i + 1) : framesMax + framesMax * (i + 1)
-            ]
-            stack_ij2 = ij.py.to_dataset(stack_np)
-            stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-            stackprob_npi = ij.py.from_java(stackprob_ij2)
-            stackprob_np[
-                framesMax * (i + 1) : framesMax + framesMax * (i + 1)
-            ] = stackprob_npi.values
-
-        stack_np = ecadfocus_np[framesMax * (i + 2) :]
-        stack_ij2 = ij.py.to_dataset(stack_np)
-        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob_npi = ij.py.from_java(stackprob_ij2)
-        stackprob_np[framesMax * (i + 2) :] = stackprob_npi.values
-        OOPprob_ij2 = ij.py.to_dataset(stackprob_np.astype("uint8"))
-
-        outname = "%s_outOfPlaneProb.tif" % root_path
-        save_ij2(ij, OOPprob_ij2, outname)
+    stackprob = np.asarray(stackprob, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/{name}{filename}.tif", stackprob)
 
 
 # -----------------
 
 
-def get_stack_macro(filepath):
-    return """
-        open("%s");
-        main_win = getTitle();
-        run("8-bit");
-    """ % (
-        filepath,
-    )
+def surfaceFind(p):
+
+    n = len(p) - 4
+
+    localMax = []
+    for i in range(n):
+        q = p[i : i + 5]
+        localMax.append(max(q))
+
+    Max = localMax[0]
+    for i in range(n):
+        if Max < localMax[i]:
+            Max = localMax[i]
+        elif Max < 250:
+            continue
+        else:
+            return Max
+
+    return Max
 
 
-def get_ecad_macro(filepath):
-    return """
-        open("%s");
-        main_win = getTitle();
-        run("Split Channels");
-        selectWindow("C2-"+ main_win);
-        close();
-        selectWindow("C1-"+ main_win);
-        run("8-bit");
-    """ % (
-        filepath,
-    )
+def getSurface(ecad):
 
-
-def get_h2_macro(filepath):
-    return """
-        open("%s");
-        main_win = getTitle();
-        run("Split Channels");
-        selectWindow("C1-"+ main_win);
-        close();
-        selectWindow("C2-"+ main_win);
-        run("Median 3D...", "x=2 y=2 z=2");
-        run("8-bit");
-    """ % (
-        filepath,
-    )
-
-
-def getSurface(ecad_np):
-
-    ecad_np = ecad_np.astype("float")
-    variance = ecad_np
-    surface = ecad_np[:, 0]
-    (T, Z, Y, X) = ecad_np.shape
+    ecad = ecad.astype("float")
+    variance = ecad
+    (T, Z, Y, X) = ecad.shape
 
     for t in range(T):
         for z in range(Z):
-            win_mean = ndimage.uniform_filter(ecad_np.values[t, z], (10, 10))
-            win_sqr_mean = ndimage.uniform_filter(ecad_np.values[t, z] ** 2, (10, 10))
+            win_mean = ndimage.uniform_filter(ecad[t, z], (20, 20))
+            win_sqr_mean = ndimage.uniform_filter(ecad[t, z] ** 2, (20, 20))
             variance[t, z] = win_sqr_mean - win_mean ** 2
 
-    for t in range(T):
-        variance[t] = ndimage.median_filter(variance[t], size=(3, 3, 3))
+    win_sqr_mean = 0
+    win_mean = 0
 
-    peaks = np.zeros([T, Z - 1, Y, X])
-    varDif = np.zeros([T, Z - 1, Y, X])
-    varDif = variance[:, 0:-1].values - variance[:, 1:].values
-
-    for z in range(Z - 1):
-        peaks[:, z][varDif[:, z] > 0] = z
-        peaks[:, z][varDif[:, z] <= 0] = Z
+    surface = np.zeros([T, X, Y])
 
     for t in range(T):
-        surface[t] = np.min(peaks[t], axis=0)
+        for x in range(X):
+            for y in range(Y):
+                p = variance[t, :, x, y]
 
-    for t in range(T):
-        surface[t] = ndimage.median_filter(surface[t], (10, 10))
-    surface = surface.astype("uint8")
+                # p = list(p)
+                # p.reverse()
+                # p = np.array(p)
+
+                m = surfaceFind(p)
+                h = [i for i, j in enumerate(p) if j == m][0]
+
+                surface[t, x, y] = h
+
+    surface = ndimage.median_filter(surface, size=9)
+    surface = np.asarray(surface, "uint8")
 
     return surface
 
@@ -330,8 +186,8 @@ def getSurface(ecad_np):
 def heightScale(z0, z):
 
     # e where scaling starts from the surface and d is the cut off
-    d = 10
-    e = 8
+    d = 14
+    e = 12
 
     if z0 + e > z:
         scale = 1
@@ -343,75 +199,65 @@ def heightScale(z0, z):
     return scale
 
 
-def heightFilter(channel_np, surface_np):
+def heightFilter(channel, surface):
 
-    (T, Z, Y, X) = channel_np.shape
+    (T, Z, Y, X) = channel.shape
 
     for z in range(Z):
         for z0 in range(Z):
             scale = heightScale(z0, z)
-            channel_np.values[:, z][surface_np.values == z0] = (
-                channel_np.values[:, z][surface_np.values == z0] * scale
-            )
+            channel[:, z][surface == z0] = channel[:, z][surface == z0] * scale
+
+    return channel
 
 
 # Returns the full macro code with the filepath and focus range inserted as
 # hard-coded values.
 
 
-def focusStack(ij, image_np, focus_range):
+def focusStack(image, focusRange):
 
-    image_np = image_np.astype("uint16")
-    img = np.array(image_np)
-    (T, Z, Y, X) = image_np.shape
-    variance_np = np.zeros([T, Z, Y, X])
-    varianceMax_np = np.zeros([T, Y, X])
-    surface_np = np.zeros([T, Y, X])
-    focus_np = np.zeros([T, Y, X])
+    image = image.astype("uint16")
+    (T, Z, Y, X) = image.shape
+    variance = np.zeros([T, Z, Y, X])
+    varianceMax = np.zeros([T, Y, X])
+    surface = np.zeros([T, Y, X])
+    focus = np.zeros([T, Y, X])
 
     for t in range(T):
         for z in range(Z):
-            win_mean = ndimage.uniform_filter(
-                image_np.values[t, z], (focus_range, focus_range)
+            winMean = ndimage.uniform_filter(image[t, z], (focusRange, focusRange))
+            winSqrMean = ndimage.uniform_filter(
+                image[t, z] ** 2, (focusRange, focusRange)
             )
-            win_sqr_mean = ndimage.uniform_filter(
-                image_np.values[t, z] ** 2, (focus_range, focus_range)
-            )
-            variance_np[t, z] = win_sqr_mean - win_mean ** 2
+            variance[t, z] = winSqrMean - winMean ** 2
 
     for t in range(T):
-        varianceMax_np[t] = np.max(variance_np[t], axis=0)
+        varianceMax[t] = np.max(variance[t], axis=0)
 
     for t in range(T):
         for z in range(Z):
-            surface_np[t][variance_np[t, z] == varianceMax_np[t]] = z
+            surface[t][variance[t, z] == varianceMax[t]] = z
 
     for t in range(T):
         for z in range(Z):
-            focus_np[t][surface_np[t] == z] = img[t, z][surface_np[t] == z]
+            focus[t][surface[t] == z] = image[t, z][surface[t] == z]
 
-    surface_np = surface_np.astype("uint8")
-    focus_np = focus_np.astype("uint8")
+    surface = surface.astype("uint8")
+    focus = focus.astype("uint8")
 
-    return surface_np, focus_np
+    return surface, focus
 
 
-# Applies the normalisation code.  It's been reduced to a single copy (rather
-# than having separate ones for Ecad and H2).
 def normalise(vid, calc, mu0):
     vid = vid.astype("float")
     (T, X, Y) = vid.shape
 
     for t in range(T):
-        mu = vid[
-            t, 50:450, 50:450
-        ]  # crop image to prevent skew in bleach from unbleached tissue
+        mu = vid[t, 50:450, 50:450][vid[t, 50:450, 50:450] > 0]
 
-        # Since we're using the same function for Ecad and H2, we have this
-        # conditional statement, which calculates mu appropriately depending
-        # on which channel is currently being processed.
         if calc == "MEDIAN":
-            mu = np.quantile(mu, 0.5)  # check this is right
+            mu = np.quantile(mu, 0.5)
         elif calc == "UPPER_Q":
             mu = np.quantile(mu, 0.75)
 
@@ -423,30 +269,14 @@ def normalise(vid, calc, mu0):
     return vid.astype("uint8")
 
 
-# Applies the WEKA pixel classification step.  This function creates an instance
-# of the WekaSegmentation Java class, which allows us to run the class as if we
-# were calling it natively inside Java.
 def apply_weka(ij, classifier, image_ij2):
-    # Using scyjava and jimport to create an instance of the ImageJFunctions
-    # class, which will be used to convert ImageJ2 images to ImageJ1
+
     ijf = sj.jimport("net.imglib2.img.display.imagej.ImageJFunctions")()
 
-    # Converting the ImageJ2 image (DefaultDataset) to an ImageJ1 (ImagePlus)
-    # type.  The argument is just the name given to this image.  We can call it
-    # anything we like.
     image_ij1 = ijf.wrap(image_ij2, sj.to_java("IJ1 image"))
 
-    # Applying classifier using the WekaSegmentation class' "applyClassifier"
-    # function.  This returns a new ImageJ1 image (ImagePlus format).
     prob_ij1 = classifier.applyClassifier(image_ij1, 6, True)
-    print("-----------------------------------------------------------")
 
-    # At the moment, the probability image is a single stack with alternating
-    # predicted classes, so we want to convert it into a multidimensional stack.
-    # To do this, we need to know how many frames and channels (classes) there
-    # are.  The third dimension is labelled internally within the ImageJ1 image
-    # as "channels", so to get the number of frames we actually need to find out
-    # how many channels it has.
     n_channels = classifier.getNumOfClasses()
     n_frames = image_ij1.getNChannels()
     prob_ij1.setDimensions(n_channels, 1, n_frames)
@@ -456,17 +286,12 @@ def apply_weka(ij, classifier, image_ij2):
     prob_np = prob_np.astype("uint8")[:, 0]
     prob_ij2 = ij.py.to_dataset(prob_np)
 
-    # Converting the probability image to ImageJ2 format, so it can be saved.
     return prob_ij2
 
 
-# This function saves ImageJ2 format images to the specified output file path.
 def save_ij2(ij, image_ij2, outname):
-    # The image saving function will throw an error if it finds an image already
-    # saved at the target location.  Therefore, we first need to delete such
-    # images.
+
     if os.path.exists(outname):
         os.remove(outname)
 
-    # Saving the ImageJ2 image (DefaultDataset) to file.
     ij.io().save(image_ij2, outname)

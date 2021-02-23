@@ -78,17 +78,11 @@ print("Processing image")
 # intensity normalisation.
 
 for filename in filenames:
+    stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
     print("-----------------------------------------------------------")
     print(f"{filename}")
-    print("-----------------------------------------------------------")
-    utilBatch.process_stack(
-        filename,
-    )
+    print("-----------------------------------------------------------") ``
 
-for filename in filenames:
-    print("-----------------------------------------------------------")
-    print(f"{filename}")
-    print("-----------------------------------------------------------")
     print("Running pixel classification (WEKA) Ecad")
 
     utilBatch.weka(

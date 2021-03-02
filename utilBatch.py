@@ -29,13 +29,14 @@ def process_stack(filename):
     for t in range(T):
         stack[t, :, 1] = ndimage.median_filter(stack[t, :, 1], size=(3, 3, 3))
 
-    tifffile.imwrite(
-        f"datProcessing/{filename}/migration{filename}.tif", stack[:, :, 1]
-    )
+    migration = np.asarray(stack[:, :, 1], "uint8")
+    migration = normaliseMigration(migration, "MEDIAN", 10)
+    tifffile.imwrite(f"datProcessing/{filename}/migration{filename}.tif", migration)
+
     h2 = heightFilter(stack[:, :, 1], surface)
     stack = 0
 
-    save = True
+    save = False
     if save:
         ecad = np.asarray(ecad, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/ecadHeight{filename}.tif", ecad)
@@ -47,12 +48,14 @@ def process_stack(filename):
     ecadFocus = focusStack(ecad, 9)[1]
     h2Focus = focusStack(h2, 9)[1]
 
-    save = True
+    save = False
     if save:
         ecadFocus = np.asarray(ecadFocus, "uint8")
-        tifffile.imwrite(f"datProcessing/{filename}/ecadFocus{filename}.tif", ecadFocus)
+        tifffile.imwrite(
+            f"datProcessing/{filename}/ecadBleach{filename}.tif", ecadFocus
+        )
         h2Focus = np.asarray(h2Focus, "uint8")
-        tifffile.imwrite(f"datProcessing/{filename}/h2Focus{filename}.tif", h2Focus)
+        tifffile.imwrite(f"datProcessing/{filename}/h2Bleach{filename}.tif", h2Focus)
 
     print("Normalising images")
 
@@ -63,12 +66,10 @@ def process_stack(filename):
     if save:
         ecadNormalise = np.asarray(ecadNormalise, "uint8")
         tifffile.imwrite(
-            f"datProcessing/{filename}/ecadNormalise{filename}.tif", ecadNormalise
+            f"datProcessing/{filename}/ecadFocus{filename}.tif", ecadNormalise
         )
         h2Normalise = np.asarray(h2Normalise, "uint8")
-        tifffile.imwrite(
-            f"datProcessing/{filename}/h2Normalise{filename}.tif", h2Normalise
-        )
+        tifffile.imwrite(f"datProcessing/{filename}/h2Focus{filename}.tif", h2Normalise)
 
 
 def weka(
@@ -83,7 +84,7 @@ def weka(
     weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
     weka.loadClassifier(model_path)
 
-    ecadFile = f"datProcessing/{filename}/{channel}Normalise{filename}.tif"
+    ecadFile = f"datProcessing/{filename}/{channel}Focus{filename}.tif"
     ecad = sm.io.imread(ecadFile).astype(int)
 
     (T, X, Y) = ecad.shape
@@ -186,8 +187,8 @@ def getSurface(ecad):
 def heightScale(z0, z):
 
     # e where scaling starts from the surface and d is the cut off
-    d = 14
-    e = 12
+    d = 10
+    e = 9
 
     if z0 + e > z:
         scale = 1
@@ -269,6 +270,26 @@ def normalise(vid, calc, mu0):
     return vid.astype("uint8")
 
 
+def normaliseMigration(vid, calc, mu0):
+    vid = vid.astype("float")
+    (T, Z, X, Y) = vid.shape
+
+    for t in range(T):
+        mu = vid[t, :, 50:450, 50:450][vid[t, :, 50:450, 50:450] > 0]
+
+        if calc == "MEDIAN":
+            mu = np.quantile(mu, 0.5)
+        elif calc == "UPPER_Q":
+            mu = np.quantile(mu, 0.75)
+
+        ratio = mu0 / mu
+
+        vid[t] = vid[t] * ratio
+        vid[t][vid[t] > 255] = 255
+
+    return vid.astype("uint8")
+
+
 def apply_weka(ij, classifier, image_ij2):
 
     ijf = sj.jimport("net.imglib2.img.display.imagej.ImageJFunctions")()
@@ -295,3 +316,37 @@ def save_ij2(ij, image_ij2, outname):
         os.remove(outname)
 
     ij.io().save(image_ij2, outname)
+
+
+def get_outPlane_macro(filepath):
+    return """
+        open("%s");
+        rename("outPlane.tif");
+        mainWin = "outPlane.tif"
+
+        setOption("BlackBackground", false);
+        run("Make Binary", "method=Minimum background=Default calculate");
+        run("Median 3D...", "x=4 y=4 z=4");
+        run("Invert", "stack");
+        run("Make Binary", "method=Minimum background=Default calculate");
+        run("Dilate", "stack");
+        run("Dilate", "stack");
+        run("Median 3D...", "x=2 y=2 z=2");
+        run("Invert", "stack");
+    """ % (
+        filepath
+    )
+
+
+def woundsite(ij, filename):
+
+    filepath = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/woundProb{filename}.tif"
+
+    outPlaneMacro = get_outPlane_macro(filepath)
+    ij.script().run("macro.ijm", outPlaneMacro, True).get()
+
+    outPlaneBinary_ij2 = ij.py.active_dataset()
+    outPlaneBinary = ij.py.from_java(outPlaneBinary_ij2)
+
+    outPlaneBinary = np.asarray(outPlaneBinary, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/outPlane{filename}.tif", outPlaneBinary)

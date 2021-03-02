@@ -594,6 +594,7 @@ costLim = 0.5
 filenames, fileType = cl.getFilesType()
 
 for filename in filenames:
+    print(filename)
 
     if "Wound" in filename:
         wound = True
@@ -880,7 +881,7 @@ for filename in filenames:
                     delta_t1 = 0
                     t0 = df3["Time"].iloc[2][0]
 
-                (Cx, Cy) = dfWound["Centroid"][t0]
+                (Cx, Cy) = dfWound["Position"].iloc[t0]
                 [x0, y0] = df3["Position"].iloc[1][delta_t0]
                 [x1, y1] = df3["Position"].iloc[2][delta_t1]
 
@@ -1233,6 +1234,7 @@ for filename in filenames:
                             "Height": df4["Height"].iloc[i],
                             "Necleus Orientation": df4["Necleus Orientation"].iloc[i],
                             "Polygons": df4["Polygons"].iloc[i],
+                            "Division Orientation": df4["Division Orientation"].iloc[2],
                             "Original Label": df4["Original Label"].iloc[i],
                             "Spot": df4["Spot"].iloc[i],
                         }

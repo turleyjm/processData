@@ -3,41 +3,51 @@ import shutil
 from math import floor, log10
 
 from collections import Counter
-import cv2
-import matplotlib
-import matplotlib.lines as lines
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import random
-import scipy as sp
-import scipy.linalg as linalg
-import shapely
 import skimage as sm
 import skimage.io
-import skimage.measure
-from shapely.geometry import Polygon
-from shapely.geometry.polygon import LinearRing
 import tifffile
-from skimage.draw import circle_perimeter
-from scipy import optimize
-import xml.etree.ElementTree as et
+import random
 
-import cellProperties as cell
-import findGoodCells as fi
-import commonLiberty as cl
-
-plt.rcParams.update({"font.size": 20})
 
 # -------------------
 
-filenames = cl.getFiles()
+
+def getFiles():
+    f = open("pythonText.txt", "r")
+    filenames = f.read()
+    filenames = filenames.split(", ")
+    return filenames
+
+
+filenames = getFiles()
 
 training = []
 
 for filename in filenames:
 
-    vidFile = f"dat/{filename}/focusH2{filename}.tif"
+    vidFile = f"datProcessing/{filename}/h2Focus{filename}.tif"
+    vid = sm.io.imread(vidFile).astype(int)
+
+    t0 = int(random.uniform(0, 1) * 40)  # for woundsite
+
+    for i in range(3):
+        training.append(vid[t0 + i])
+
+    t0 = int(random.uniform(0, 1) * 176)
+
+    for i in range(3):
+        training.append(vid[t0 + i])
+
+training = np.asarray(training, "uint8")
+tifffile.imwrite(f"datProcessing/TrainingData/h2FocusTrainingData.tif", training)
+
+training = []
+
+for filename in filenames:
+
+    vidFile = f"datProcessing/{filename}/ecadFocus{filename}.tif"
     vid = sm.io.imread(vidFile).astype(int)
 
     t0 = int(random.uniform(0, 1) * 50)  # for woundsite
@@ -51,27 +61,7 @@ for filename in filenames:
         training.append(vid[t0 + i])
 
 training = np.asarray(training, "uint8")
-tifffile.imwrite(f"dat/TrainingData/focusH2TrainingData.tif", training)
-
-training = []
-
-for filename in filenames:
-
-    vidFile = f"dat/{filename}/focusEcad{filename}.tif"
-    vid = sm.io.imread(vidFile).astype(int)
-
-    t0 = int(random.uniform(0, 1) * 50)  # for woundsite
-
-    for i in range(3):
-        training.append(vid[t0 + i])
-
-    t0 = int(random.uniform(0, 1) * 176)
-
-    for i in range(3):
-        training.append(vid[t0 + i])
-
-training = np.asarray(training, "uint8")
-tifffile.imwrite(f"dat/TrainingData/focusH2TrainingData.tif", training)
+tifffile.imwrite(f"datProcessing/TrainingData/ecadFocusTrainingData.tif", training)
 
 # training = np.asarray(training, "uint8")
 # tifffile.imwrite(f"dat/TrainingData/woundTrainingData.tif", training)
@@ -114,4 +104,3 @@ tifffile.imwrite(f"dat/TrainingData/focusH2TrainingData.tif", training)
 # tifffile.imwrite(f"dat/trainingData/deepBinary.tif", deepBinary)
 # overlay = np.asarray(overlay, "uint8")
 # tifffile.imwrite(f"dat/trainingData/deepOverlayBinary.tif", overlay)
-

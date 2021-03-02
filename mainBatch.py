@@ -25,13 +25,11 @@ filenames = f.read()
 filenames = filenames.split(", ")
 filename = filenames[0]
 
-stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 ecad_model_path = "/Users/jt15004/Documents/Coding/classifiers/cellBoundary.model"
 h2_model_path = "/Users/jt15004/Documents/Coding/classifiers/mitosis2.model"
 outOfPlane_model_path = "/Users/jt15004/Documents/Coding/classifiers/wound.model"
 
 config["defaults"] = {
-    "stack_path": stack_path,
     "ecad_model_path": ecad_model_path,
     "h2_model_path": h2_model_path,
     "outOfPlane_model_path": outOfPlane_model_path,
@@ -118,6 +116,8 @@ for filename in filenames:
         "h2",
         "h2Prob",
     )
+
+    utilBatch.woundsite(ij, filename)
 
 
 # At this point the analysis is complete

@@ -3,7 +3,6 @@ import shutil
 from math import floor, log10
 
 from collections import Counter
-import cv2
 import matplotlib
 import matplotlib.lines as lines
 import matplotlib.pyplot as plt
@@ -125,7 +124,12 @@ def createFolder(directory):
 
 def rotation_matrix(theta):
 
-    R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)],])
+    R = np.array(
+        [
+            [np.cos(theta), -np.sin(theta)],
+            [np.sin(theta), np.cos(theta)],
+        ]
+    )
 
     return R
 
@@ -142,7 +146,7 @@ def shiftedColorMap(cmap, start=0, midpoint=0.5, stop=1.0, name="shiftedcmap"):
       start : Offset from lowest point in the colormap's range.
           Defaults to 0.0 (no lower offset). Should be between
           0.0 and `midpoint`.
-      midpoint : The new center of the colormap. Defaults to 
+      midpoint : The new center of the colormap. Defaults to
           0.5 (no shift). Should be between 0.0 and 1.0. In
           general, this should be  1 - vmax / (vmax + abs(vmin))
           For example if your data range from -15.0 to +5.0 and

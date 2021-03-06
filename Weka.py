@@ -27,7 +27,7 @@ filename = filenames[0]
 
 stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 ecad_model_path = "/Users/jt15004/Documents/Coding/classifiers/cellBoundary.model"
-h2_model_path = "/Users/jt15004/Documents/Coding/classifiers/mitosis2.model"
+h2_model_path = "/Users/jt15004/Documents/Coding/classifiers/mitosis.model"
 outOfPlane_model_path = "/Users/jt15004/Documents/Coding/classifiers/wound.model"
 
 config["defaults"] = {
@@ -81,27 +81,27 @@ for filename in filenames:
     stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
     print("-----------------------------------------------------------")
     print(f"{filename}")
-    print("-----------------------------------------------------------") ``
+    print("-----------------------------------------------------------")
 
     print("Running pixel classification (WEKA) Ecad")
 
-    utilBatch.weka(
-        ij,
-        filename,
-        ecad_model_path,
-        "ecad",
-        "ecadProb",
-    )
+    # utilBatch.weka(
+    #     ij,
+    #     filename,
+    #     ecad_model_path,
+    #     "ecad",
+    #     "ecadProb",
+    # )
 
     print("Running pixel classification (WEKA) out of plane")
 
-    utilBatch.weka(
-        ij,
-        filename,
-        outOfPlane_model_path,
-        "ecad",
-        "woundProb",
-    )
+    # utilBatch.weka(
+    #     ij,
+    #     filename,
+    #     outOfPlane_model_path,
+    #     "ecad",
+    #     "woundProb",
+    # )
 
     print("Running pixel classification (WEKA) H2")
 
@@ -112,6 +112,8 @@ for filename in filenames:
         "h2",
         "h2Prob",
     )
+
+    utilBatch.woundsite(ij, filename)
 
 
 # At this point the analysis is complete

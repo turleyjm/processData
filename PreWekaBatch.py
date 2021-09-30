@@ -21,3 +21,5 @@ for filename in filenames:
     utilBatch.process_stack(
         filename,
     )
+
+    utilBatch.deepLearning(filename)

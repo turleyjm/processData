@@ -85,33 +85,33 @@ for filename in filenames:
 
     print("Running pixel classification (WEKA) Ecad")
 
-    # utilBatch.weka(
-    #     ij,
-    #     filename,
-    #     ecad_model_path,
-    #     "ecad",
-    #     "ecadProb",
-    # )
-
-    print("Running pixel classification (WEKA) out of plane")
-
-    # utilBatch.weka(
-    #     ij,
-    #     filename,
-    #     outOfPlane_model_path,
-    #     "ecad",
-    #     "woundProb",
-    # )
-
-    print("Running pixel classification (WEKA) H2")
-
     utilBatch.weka(
         ij,
         filename,
-        h2_model_path,
-        "h2",
-        "h2Prob",
+        ecad_model_path,
+        "ecad",
+        "ecadProb",
     )
+
+    print("Running pixel classification (WEKA) out of plane")
+
+    utilBatch.weka(       
+        ij,
+        filename,
+        outOfPlane_model_path,
+        "ecad",
+        "woundProb",      
+    ) 
+
+    # print("Running pixel classification (WEKA) H2")
+
+    # utilBatch.weka(
+    #     ij,
+    #     filename,
+    #     h2_model_path,
+    #     "h2",
+    #     "h2Prob",
+    # )
 
     utilBatch.woundsite(ij, filename)
 

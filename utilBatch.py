@@ -18,8 +18,7 @@ def process_stack(filename):
     (T, Z, C, Y, X) = stack.shape
 
     surface = getSurface(stack[:, :, 0])
-    save = True
-    if save:
+    if True:
         surface = np.asarray(surface, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/surface{filename}.tif", surface)
 
@@ -36,8 +35,7 @@ def process_stack(filename):
     h2 = heightFilter(stack[:, :, 1], surface)
     stack = 0
 
-    save = False
-    if save:
+    if False:
         ecad = np.asarray(ecad, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/ecadHeight{filename}.tif", ecad)
         h2 = np.asarray(h2, "uint8")
@@ -48,8 +46,7 @@ def process_stack(filename):
     ecadFocus = focusStack(ecad, 9)[1]
     h2Focus = focusStack(h2, 9)[1]
 
-    save = False
-    if save:
+    if False:
         ecadFocus = np.asarray(ecadFocus, "uint8")
         tifffile.imwrite(
             f"datProcessing/{filename}/ecadBleach{filename}.tif", ecadFocus
@@ -59,11 +56,10 @@ def process_stack(filename):
 
     print("Normalising images")
 
-    ecadNormalise = normalise(ecadFocus, "MEDIAN", 25)
+    ecadNormalise = normalise(ecadFocus, "MEDIAN", 60)
     h2Normalise = normalise(h2Focus, "UPPER_Q", 60)
 
-    save = True
-    if save:
+    if True:
         ecadNormalise = np.asarray(ecadNormalise, "uint8")
         tifffile.imwrite(
             f"datProcessing/{filename}/ecadFocus{filename}.tif", ecadNormalise
@@ -187,8 +183,8 @@ def getSurface(ecad):
 def heightScale(z0, z):
 
     # e where scaling starts from the surface and d is the cut off
-    d = 10
-    e = 9
+    d = 15
+    e = 14
 
     if z0 + e > z:
         scale = 1
@@ -350,3 +346,33 @@ def woundsite(ij, filename):
 
     outPlaneBinary = np.asarray(outPlaneBinary, "uint8")
     tifffile.imwrite(f"datProcessing/{filename}/outPlane{filename}.tif", outPlaneBinary)
+
+
+def deepLearning(filename):
+
+    print("Deep Learning Input")
+    T = 91
+
+    ecadFocus = sm.io.imread(
+        f"datProcessing/{filename}/ecadFocus{filename}.tif"
+    ).astype(int)
+    h2Focus = sm.io.imread(f"datProcessing/{filename}/h2Focus{filename}.tif").astype(
+        int
+    )
+
+    input3h = np.zeros([91, 512, 512, 3])
+    input1e2h = np.zeros([91, 512, 512, 3])
+
+    for t in range(T):
+        input1e2h[t, :, :, 0] = h2Focus[t]
+        input1e2h[t, :, :, 1] = ecadFocus[t]
+        input1e2h[t, :, :, 2] = h2Focus[t + 1]
+
+        input3h[t, :, :, 0] = h2Focus[t]
+        input3h[t, :, :, 1] = h2Focus[t + 1]
+        input3h[t, :, :, 2] = h2Focus[t + 2]
+
+    input1e2h = np.asarray(input1e2h, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/input1e2h{filename}.tif", input1e2h)
+    input3h = np.asarray(input3h, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/input3h{filename}.tif", input3h)

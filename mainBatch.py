@@ -82,6 +82,7 @@ for filename in filenames:
     utilBatch.process_stack(
         filename,
     )
+    utilBatch.deepLearning(filename)
 
 for filename in filenames:
     print("-----------------------------------------------------------")
@@ -107,17 +108,18 @@ for filename in filenames:
         "woundProb",
     )
 
-    print("Running pixel classification (WEKA) H2")
+    # print("Running pixel classification (WEKA) H2")
 
-    utilBatch.weka(
-        ij,
-        filename,
-        h2_model_path,
-        "h2",
-        "h2Prob",
-    )
+    # utilBatch.weka(
+    #     ij,
+    #     filename,
+    #     h2_model_path,
+    #     "h2",
+    #     "h2Prob",
+    # )
 
-    utilBatch.woundsite(ij, filename)
+    if "Wound" in filename:
+        utilBatch.woundsite(ij, filename)
 
 
 # At this point the analysis is complete

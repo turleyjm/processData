@@ -8,7 +8,7 @@ import skimage.io
 import tifffile
 
 
-def process_stack(filename):
+def process_stack(ij, filename):
 
     print("Finding Surface")
 
@@ -22,14 +22,19 @@ def process_stack(filename):
         surface = np.asarray(surface, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/surface{filename}.tif", surface)
 
+    print("Median Filter")
+
+    for t in range(T):
+        stack[t, :, 1] = ndimage.median_filter(stack[t, :, 1], size=(3, 3, 3))
+        stack[t, :, 0] = ndimage.median_filter(stack[t, :, 0], size=(2, 2, 2))
+
     print("Filtering Height")
 
     ecad = heightFilter(stack[:, :, 0], surface)
-    for t in range(T):
-        stack[t, :, 1] = ndimage.median_filter(stack[t, :, 1], size=(3, 3, 3))
 
     migration = np.asarray(stack[:, :, 1], "uint8")
     migration = normaliseMigration(migration, "MEDIAN", 10)
+
     tifffile.imwrite(f"datProcessing/{filename}/migration{filename}.tif", migration)
 
     h2 = heightFilter(stack[:, :, 1], surface)
@@ -43,8 +48,8 @@ def process_stack(filename):
 
     print("Focussing the image stack")
 
-    ecadFocus = focusStack(ecad, 9)[1]
-    h2Focus = focusStack(h2, 9)[1]
+    ecadFocus = focusStack(ecad, 7)[1]
+    h2Focus = focusStack(h2, 7)[1]
 
     if False:
         ecadFocus = np.asarray(ecadFocus, "uint8")
@@ -67,6 +72,15 @@ def process_stack(filename):
         h2Normalise = np.asarray(h2Normalise, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/h2Focus{filename}.tif", h2Normalise)
 
+    focus = np.zeros([T, 512, 512, 3])
+
+    for t in range(T):
+        focus[t, :, :, 0] = h2Normalise[t]
+        focus[t, :, :, 1] = ecadNormalise[t]
+
+    focus = np.asarray(focus, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/focus{filename}.tif", focus)
+
 
 def weka(
     ij,
@@ -85,37 +99,57 @@ def weka(
 
     (T, X, Y) = ecad.shape
 
-    stackprob = np.zeros([T, X, Y])
-    split = int(T / framesMax - 1)
-    stack = ecad[0:framesMax]
-    stack_ij2 = ij.py.to_dataset(stack)
-    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-    stackprob[0:framesMax] = ij.py.from_java(stackprob_ij2).values
-
-    j = 1
-    print(f" part {j} -----------------------------------------------------------")
-    j += 1
-
-    for i in range(split):
-        stack = ecad[framesMax * (i + 1) : framesMax + framesMax * (i + 1)]
+    if T == 8:
+        j = 1
+        print(f" part {j} -----------------------------------------------------------")
+        stackprob = np.zeros([T, X, Y])
+        stack = ecad[0:4]
         stack_ij2 = ij.py.to_dataset(stack)
         stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-        stackprob[
-            framesMax * (i + 1) : framesMax + framesMax * (i + 1)
-        ] = ij.py.from_java(stackprob_ij2).values
+        stackprob[0:4] = ij.py.from_java(stackprob_ij2).values
+
+        j += 1
+        print(f" part {j} -----------------------------------------------------------")
+
+        stack = ecad[4:]
+        stack_ij2 = ij.py.to_dataset(stack)
+        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+        stackprob[4:] = ij.py.from_java(stackprob_ij2).values
+
+    else:
+        stackprob = np.zeros([T, X, Y])
+        split = int(T / framesMax - 1)
+        stack = ecad[0:framesMax]
+        stack_ij2 = ij.py.to_dataset(stack)
+        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+        stackprob[0:framesMax] = ij.py.from_java(stackprob_ij2).values
+
+        j = 1
+        print(f" part {j} -----------------------------------------------------------")
+        j += 1
+
+        for i in range(split):
+            stack = ecad[framesMax * (i + 1) : framesMax + framesMax * (i + 1)]
+            stack_ij2 = ij.py.to_dataset(stack)
+            stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+            stackprob[
+                framesMax * (i + 1) : framesMax + framesMax * (i + 1)
+            ] = ij.py.from_java(stackprob_ij2).values
+
+            print(
+                f" part {j} -----------------------------------------------------------"
+            )
+            j += 1
+
+        stack = ecad[framesMax * (i + 2) :]
+        stack_ij2 = ij.py.to_dataset(stack)
+        stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+        stackprob[framesMax * (i + 2) :] = ij.py.from_java(stackprob_ij2).values
 
         print(f" part {j} -----------------------------------------------------------")
         j += 1
 
-    stack = ecad[framesMax * (i + 2) :]
-    stack_ij2 = ij.py.to_dataset(stack)
-    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
-    stackprob[framesMax * (i + 2) :] = ij.py.from_java(stackprob_ij2).values
-
-    print(f" part {j} -----------------------------------------------------------")
-    j += 1
-
-    stackprob = np.asarray(stackprob, "uint8")
+    stackprob = 255 - np.asarray(stackprob, "uint8")
     tifffile.imwrite(f"datProcessing/{filename}/{name}{filename}.tif", stackprob)
 
 
@@ -351,7 +385,6 @@ def woundsite(ij, filename):
 def deepLearning(filename):
 
     print("Deep Learning Input")
-    T = 91
 
     ecadFocus = sm.io.imread(
         f"datProcessing/{filename}/ecadFocus{filename}.tif"
@@ -359,11 +392,12 @@ def deepLearning(filename):
     h2Focus = sm.io.imread(f"datProcessing/{filename}/h2Focus{filename}.tif").astype(
         int
     )
+    (T, Y, X) = ecadFocus.shape
 
-    input3h = np.zeros([91, 512, 512, 3])
-    input1e2h = np.zeros([91, 512, 512, 3])
+    input3h = np.zeros([T - 2, 512, 512, 3])
+    input1e2h = np.zeros([T - 2, 512, 512, 3])
 
-    for t in range(T):
+    for t in range(T - 2):
         input1e2h[t, :, :, 0] = h2Focus[t]
         input1e2h[t, :, :, 1] = ecadFocus[t]
         input1e2h[t, :, :, 2] = h2Focus[t + 1]
@@ -373,6 +407,100 @@ def deepLearning(filename):
         input3h[t, :, :, 2] = h2Focus[t + 2]
 
     input1e2h = np.asarray(input1e2h, "uint8")
-    tifffile.imwrite(f"datProcessing/{filename}/input1e2h{filename}.tif", input1e2h)
+    tifffile.imwrite(f"uploadDL/input1e2h{filename}.tif", input1e2h)
     input3h = np.asarray(input3h, "uint8")
-    tifffile.imwrite(f"datProcessing/{filename}/input3h{filename}.tif", input3h)
+    tifffile.imwrite(f"uploadDL/input3h{filename}.tif", input3h)
+
+
+def trackMate(filename):
+
+    ### MAIN PROCESSING STEPS ###
+    print("TrackMate")
+
+    HyperStackDisplayer = sj.jimport(
+        "fiji.plugin.trackmate.visualization.hyperstack.HyperStackDisplayer"
+    )
+    TmXmlReader = sj.jimport("fiji.plugin.trackmate.io.TmXmlReader")
+    TmXmlWriter = sj.jimport("fiji.plugin.trackmate.io.TmXmlWriter")
+    Logger = sj.jimport("fiji.plugin.trackmate.Logger")
+    Settings = sj.jimport("fiji.plugin.trackmate.Settings")
+    SelectionModel = sj.jimport("fiji.plugin.trackmate.SelectionModel")
+    DetectorProvider = sj.jimport("fiji.plugin.trackmate.providers.DetectorProvider")
+    TrackerProvider = sj.jimport("fiji.plugin.trackmate.providers.TrackerProvider")
+    SpotAnalyzerProvider = sj.jimport(
+        "fiji.plugin.trackmate.providers.SpotAnalyzerProvider"
+    )
+    EdgeAnalyzerProvider = sj.jimport(
+        "fiji.plugin.trackmate.providers.EdgeAnalyzerProvider"
+    )
+    TrackAnalyzerProvider = sj.jimport(
+        "fiji.plugin.trackmate.providers.TrackAnalyzerProvider"
+    )
+    jfile = sj.jimport("java.io.File")
+    Model = sj.jimport("fiji.plugin.trackmate.Model")
+    Trackmate = sj.jimport("fiji.plugin.trackmate.TrackMate")
+    Factory = sj.jimport("fiji.plugin.trackmate.detection.LogDetectorFactory")
+    LAPUtils = sj.jimport("fiji.plugin.trackmate.tracking.LAPUtils")
+    SparseLAP = sj.jimport(
+        "fiji.plugin.trackmate.tracking.sparselap.SimpleSparseLAPTrackerFactory"
+    )
+    FeatureFilter = sj.jimport("fiji.plugin.trackmate.features.FeatureFilter")
+    ImagePlus = sj.jimport("ij.ImagePlus")
+    print("done")
+
+    stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/migration{filename}.tif"
+    xmlPath = (stack_path.rsplit(".tif"))[0]
+    newXML = open(xmlPath + ".xml", "w")
+
+    imp = ImagePlus(stack_path)
+    model = Model()
+    model.setLogger(Logger.IJ_LOGGER)
+
+    settings = Settings()
+    settings.setFrom(imp)
+    settings.detectorFactory = Factory()
+    #################### Change these settings based on trackmate parameters #####################################
+    settings.detectorSettings = {
+        "DO_SUBPIXEL_LOCALIZATION": True,
+        "RADIUS": 9.000,
+        "TARGET_CHANNEL": 1,
+        "THRESHOLD": 10.000,
+        "DO_MEDIAN_FILTERING": False,
+    }
+    # Configure tracker
+    settings.trackerFactory = SparseLAP()
+    settings.trackerSettings = LAPUtils.getDefaultLAPSettingsMap()
+    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 8.0
+    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = 8.0
+    # Add ALL the feature analyzers known to TrackMate, via
+    # providers.
+    # They offer automatic analyzer detection, so all the
+    # available feature analyzers will be added.
+    spotAnalyzerProvider = SpotAnalyzerProvider()
+    for key in spotAnalyzerProvider.getKeys():
+        print(key)
+        settings.addSpotAnalyzerFactory(spotAnalyzerProvider.getFactory(key))
+    edgeAnalyzerProvider = EdgeAnalyzerProvider()
+    for key in edgeAnalyzerProvider.getKeys():
+        print(key)
+        settings.addEdgeAnalyzer(edgeAnalyzerProvider.getFactory(key))
+    trackAnalyzerProvider = TrackAnalyzerProvider()
+    for key in trackAnalyzerProvider.getKeys():
+        print(key)
+        settings.addTrackAnalyzer(trackAnalyzerProvider.getFactory(key))
+
+    trackmate = Trackmate(model, settings)
+    # process
+    ok = trackmate.checkInput()
+    if not ok:
+        print(str(trackmate.getErrorMessage()))
+    ok = trackmate.process()
+    if not ok:
+        print(str(trackmate.getErrorMessage()))
+    filter1 = FeatureFilter("TOTAL_INTENSITY", 83833.81, False)
+    settings.addTrackFilter(filter1)
+    jafile = jfile(xmlPath + ".xml")
+    writer = TmXmlWriter(jafile)
+    writer.appendModel(model)
+    writer.appendSettings(settings)
+    writer.writeToFile()

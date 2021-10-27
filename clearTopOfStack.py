@@ -15,11 +15,11 @@ stack = sm.io.imread(stackFile).astype(int)
 T, Z, C, X, Y = stack.shape
 zero = np.zeros([T, Z, C, X, Y])
 
-if False:
+if True:
     # Settings Ecad Time:Depth
 
-    time = [0, 14, 20, 24]
-    depth = [1, 2, 3, 4]  # (+1)
+    time = [27, 49, 56, 67, 73]
+    depth = [1, 2, 3, 4, 5]  # (+1)
 
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
@@ -27,8 +27,8 @@ if False:
 if True:
     # Settings H2 Time:Depth
 
-    time = [0, 14, 20, 24]
-    depth = [1, 2, 3, 4]  # (+1)
+    time = [27, 49, 56, 67, 73]
+    depth = [1, 2, 3, 4, 5]  # (+1)
 
     for t, z in zip(time, depth):
         stack[t:, :z, 1] = zero[t:, :z, 1]

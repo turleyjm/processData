@@ -50,8 +50,8 @@ print("Initialising ImageJ (this may take a couple of minutes first time)")
 
 # Setting the amount of RAM the Java Virtual Machine running ImageJ is allowed
 # (e.g. Xmx6g loads 6 GB of RAM)
-sj.config.add_option("-Xmx6g")
-
+sj.config.add_option("-Xmx8g")
+9
 # Initialising PyImageJ with core ImageJ and the plugins we need.  For this, we
 # have the Time_Lapse plugin, which offers an alternative for stack focusing.
 # We also import the WEKA plugin.
@@ -61,6 +61,7 @@ ij = imagej.init(
         "net.imagej:imagej-legacy",
         "sc.fiji:Time_Lapse:2.1.1",
         "sc.fiji:Trainable_Segmentation:3.2.34",
+        "sc.fiji:TrackMate_:5.1.0",
     ],
     headless=True,
 )
@@ -93,27 +94,18 @@ for filename in filenames:
         "ecadProb",
     )
 
-    print("Running pixel classification (WEKA) out of plane")
-
-    utilBatch.weka(       
-        ij,
-        filename,
-        outOfPlane_model_path,
-        "ecad",
-        "woundProb",      
-    ) 
-
-    # print("Running pixel classification (WEKA) H2")
+    # print("Running pixel classification (WEKA) out of plane")
 
     # utilBatch.weka(
     #     ij,
     #     filename,
-    #     h2_model_path,
-    #     "h2",
-    #     "h2Prob",
+    #     outOfPlane_model_path,
+    #     "ecad",
+    #     "woundProb",
     # )
 
-    utilBatch.woundsite(ij, filename)
+    # if "Wound" in filename:
+    #     utilBatch.woundsite(ij, filename)
 
 
 # At this point the analysis is complete

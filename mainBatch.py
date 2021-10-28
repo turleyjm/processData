@@ -6,7 +6,7 @@ import scyjava as sj
 import utilBatch
 
 from pathlib import Path
-
+import commonLiberty as cl
 
 config_path = os.path.join(Path.home(), ".wbif", "autoseg.ini")
 
@@ -19,10 +19,7 @@ if "defaults" in config:
 else:
     defaults = {}
 
-f = open("pythonText.txt", "r")
-
-filenames = f.read()
-filenames = filenames.split(", ")
+filenames, fileType = cl.getFilesType()
 filename = filenames[0]
 
 ecad_model_path = "/Users/jt15004/Documents/Coding/classifiers/cellBoundary.model"

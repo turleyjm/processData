@@ -6,7 +6,7 @@ import scyjava as sj
 import utilBatch
 
 from pathlib import Path
-
+import commonLiberty as cl
 
 config_path = os.path.join(Path.home(), ".wbif", "autoseg.ini")
 
@@ -19,10 +19,7 @@ if "defaults" in config:
 else:
     defaults = {}
 
-f = open("pythonText.txt", "r")
-
-filenames = f.read()
-filenames = filenames.split(", ")
+filenames, fileType = cl.getFilesType()
 filename = filenames[0]
 
 stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
@@ -50,7 +47,7 @@ print("Initialising ImageJ (this may take a couple of minutes first time)")
 
 # Setting the amount of RAM the Java Virtual Machine running ImageJ is allowed
 # (e.g. Xmx6g loads 6 GB of RAM)
-sj.config.add_option("-Xmx8g")
+sj.config.add_option("-Xmx12g")
 
 # Initialising PyImageJ with core ImageJ and the plugins we need.  For this, we
 # have the Time_Lapse plugin, which offers an alternative for stack focusing.

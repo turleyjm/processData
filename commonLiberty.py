@@ -11,19 +11,14 @@ import pandas as pd
 import random
 import scipy as sp
 import scipy.linalg as linalg
-import shapely
 import skimage as sm
 import skimage.io
 import skimage.measure
-from shapely.geometry import Polygon
-from shapely.geometry.polygon import LinearRing
 import tifffile
 from skimage.draw import circle_perimeter
 from scipy import optimize
 import xml.etree.ElementTree as et
 
-import cellProperties as cell
-import findGoodCells as fi
 
 plt.rcParams.update({"font.size": 20})
 
@@ -39,14 +34,24 @@ def getFiles():
 
 def getFilesType():
     f = open("pythonText.txt", "r")
-
     fileType = f.read()
-    cwd = os.getcwd()
-    Fullfilenames = os.listdir(cwd + "/dat")
-    filenames = []
-    for filename in Fullfilenames:
-        if fileType in filename:
+
+    if fileType == "All":
+        cwd = os.getcwd()
+        Fullfilenames = os.listdir(cwd + "/datProcessing")
+        filenames = []
+        for filename in Fullfilenames:
             filenames.append(filename)
+
+        if ".DS_Store" in filenames:
+            filenames.remove(".DS_Store")
+    else:
+        cwd = os.getcwd()
+        Fullfilenames = os.listdir(cwd + "/datProcessing")
+        filenames = []
+        for filename in Fullfilenames:
+            if fileType in filename:
+                filenames.append(filename)
 
     filenames.sort()
 
@@ -56,7 +61,7 @@ def getFilesType():
 def getFilesOfType(fileType):
 
     cwd = os.getcwd()
-    Fullfilenames = os.listdir(cwd + "/dat")
+    Fullfilenames = os.listdir(cwd + "/datProcessing")
     filenames = []
     for filename in Fullfilenames:
         if fileType in filename:
@@ -70,6 +75,17 @@ def getFilesOfType(fileType):
 def ThreeD(a):
     lst = [[[] for col in range(a)] for col in range(a)]
     return lst
+
+
+def sortTime(df, t):
+
+    tMin = t[0]
+    tMax = t[1]
+
+    dftmin = df[df["Time"] >= tMin]
+    df = dftmin[dftmin["Time"] < tMax]
+
+    return df
 
 
 def sortRadius(dfVelocity, t, r):
@@ -99,6 +115,43 @@ def sortGrid(dfVelocity, x, y):
 
     dfymin = dfx[dfx["Y"] > yMin]
     df = dfymin[dfymin["Y"] < yMax]
+
+    return df
+
+
+def sortVolume(dfShape, x, y, t):
+
+    xMin = x[0]
+    xMax = x[1]
+    yMin = y[0]
+    yMax = y[1]
+    tMin = t[0]
+    tMax = t[1]
+
+    dfxmin = dfShape[dfShape["X"] >= xMin]
+    dfx = dfxmin[dfxmin["X"] < xMax]
+
+    dfymin = dfx[dfx["Y"] >= yMin]
+    dfy = dfymin[dfymin["Y"] < yMax]
+
+    dftmin = dfy[dfy["T"] >= tMin]
+    df = dftmin[dftmin["T"] < tMax]
+
+    return df
+
+
+def sortSection(dfVelocity, r, theta):
+
+    rMin = r[0]
+    rMax = r[1]
+    thetaMin = theta[0]
+    thetaMax = theta[1]
+
+    dfxmin = dfVelocity[dfVelocity["R"] > rMin]
+    dfx = dfxmin[dfxmin["R"] < rMax]
+
+    dfymin = dfx[dfx["Theta"] > thetaMin]
+    df = dfymin[dfymin["Theta"] < thetaMax]
 
     return df
 

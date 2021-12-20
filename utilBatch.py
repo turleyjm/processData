@@ -1,16 +1,25 @@
 import numpy as np
 import os
+from numpy.core.numeric import False_
 import scyjava as sj
 import scipy
 from scipy import ndimage
 import skimage as sm
 import skimage.io
 import tifffile
+from datetime import datetime
+
+
+def current_time():
+    now = datetime.now()
+    currentTime = now.strftime("%H:%M:%S")
+    return currentTime
 
 
 def process_stack(ij, filename):
 
     print("Finding Surface")
+    # print(current_time())
 
     stackFile = f"datProcessing/{filename}/{filename}.tif"
     stack = sm.io.imread(stackFile).astype(int)
@@ -22,23 +31,11 @@ def process_stack(ij, filename):
         surface = np.asarray(surface, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/surface{filename}.tif", surface)
 
-    print("Median Filter")
-
-    for t in range(T):
-        stack[t, :, 1] = ndimage.median_filter(stack[t, :, 1], size=(3, 3, 3))
-        stack[t, :, 0] = ndimage.median_filter(stack[t, :, 0], size=(2, 2, 2))
-
     print("Filtering Height")
+    # print(current_time())
 
-    ecad = heightFilter(stack[:, :, 0], surface)
-
-    migration = np.asarray(stack[:, :, 1], "uint8")
-    migration = normaliseMigration(migration, "MEDIAN", 10)
-
-    tifffile.imwrite(f"datProcessing/{filename}/migration{filename}.tif", migration)
-
-    h2 = heightFilter(stack[:, :, 1], surface)
-    stack = 0
+    ecad = heightFilter(stack[:, :, 0], surface, 10)
+    h2 = heightFilter(stack[:, :, 1], surface, 15)
 
     if False:
         ecad = np.asarray(ecad, "uint8")
@@ -47,6 +44,7 @@ def process_stack(ij, filename):
         tifffile.imwrite(f"datProcessing/{filename}/h2Height{filename}.tif", h2)
 
     print("Focussing the image stack")
+    # print(current_time())
 
     ecadFocus = focusStack(ecad, 7)[1]
     h2Focus = focusStack(h2, 7)[1]
@@ -60,6 +58,7 @@ def process_stack(ij, filename):
         tifffile.imwrite(f"datProcessing/{filename}/h2Bleach{filename}.tif", h2Focus)
 
     print("Normalising images")
+    # print(current_time())
 
     ecadNormalise = normalise(ecadFocus, "MEDIAN", 60)
     h2Normalise = normalise(h2Focus, "UPPER_Q", 60)
@@ -80,6 +79,21 @@ def process_stack(ij, filename):
 
     focus = np.asarray(focus, "uint8")
     tifffile.imwrite(f"datProcessing/{filename}/focus{filename}.tif", focus)
+
+    print("Migration Stack")
+    # print(current_time())
+
+    migration = stack[:, :, 1]
+
+    for t in range(T):
+        migration[t] = ndimage.median_filter(migration[t], size=(3, 3, 3))
+
+    migration = np.asarray(stack[:, :, 1], "uint8")
+    migration = normaliseMigration(migration, "MEDIAN", 10)
+
+    tifffile.imwrite(
+        f"datProcessing/{filename}/migration{filename}.tif", migration, imagej=True
+    )
 
 
 def weka(
@@ -156,27 +170,6 @@ def weka(
 # -----------------
 
 
-def surfaceFind(p):
-
-    n = len(p) - 4
-
-    localMax = []
-    for i in range(n):
-        q = p[i : i + 5]
-        localMax.append(max(q))
-
-    Max = localMax[0]
-    for i in range(n):
-        if Max < localMax[i]:
-            Max = localMax[i]
-        elif Max < 250:
-            continue
-        else:
-            return Max
-
-    return Max
-
-
 def getSurface(ecad):
 
     ecad = ecad.astype("float")
@@ -185,8 +178,8 @@ def getSurface(ecad):
 
     for t in range(T):
         for z in range(Z):
-            win_mean = ndimage.uniform_filter(ecad[t, z], (20, 20))
-            win_sqr_mean = ndimage.uniform_filter(ecad[t, z] ** 2, (20, 20))
+            win_mean = ndimage.uniform_filter(ecad[t, z], (40, 40))
+            win_sqr_mean = ndimage.uniform_filter(ecad[t, z] ** 2, (40, 40))
             variance[t, z] = win_sqr_mean - win_mean ** 2
 
     win_sqr_mean = 0
@@ -194,50 +187,52 @@ def getSurface(ecad):
 
     surface = np.zeros([T, X, Y])
 
+    mu0 = 400
     for t in range(T):
-        for x in range(X):
-            for y in range(Y):
-                p = variance[t, :, x, y]
+        mu = variance[t, :, 50:450, 50:450][variance[t, :, 50:450, 50:450] > 0]
 
-                # p = list(p)
-                # p.reverse()
-                # p = np.array(p)
+        mu = np.quantile(mu, 0.5)
 
-                m = surfaceFind(p)
-                h = [i for i, j in enumerate(p) if j == m][0]
+        ratio = mu0 / mu
 
-                surface[t, x, y] = h
+        variance[t] = variance[t] * ratio
+        variance[t][variance[t] > 65536] = 65536
+
+    np.argmax(variance[0] > 1000, axis=0)
+
+    surface = np.argmax(variance > 1000, axis=1)
 
     surface = ndimage.median_filter(surface, size=9)
-    surface = np.asarray(surface, "uint8")
 
     return surface
 
 
-def heightScale(z0, z):
-
-    # e where scaling starts from the surface and d is the cut off
-    d = 15
-    e = 14
-
-    if z0 + e > z:
-        scale = 1
-    elif z > z0 + d:
-        scale = 0
-    else:
-        scale = 1 - abs(z - z0 - e) / (d - e)
-
-    return scale
-
-
-def heightFilter(channel, surface):
+def heightFilter(channel, surface, height):
 
     (T, Z, Y, X) = channel.shape
 
-    for z in range(Z):
-        for z0 in range(Z):
-            scale = heightScale(z0, z)
-            channel[:, z][surface == z0] = channel[:, z][surface == z0] * scale
+    heightFilt = np.zeros([T, Y, X, Z])
+
+    b = np.arange(Z)
+    heightFilt += b
+
+    surfaceBelow = np.repeat(surface[:, :, :, np.newaxis], Z, axis=3) + height
+
+    # heightFilt = np.einsum("ijkl->iljk", heightFilt)
+
+    heightFilt = heightFilt < surfaceBelow
+    heightFilt = heightFilt.astype(float)
+
+    heightFilt = heightFilt.astype(float)
+    heightFilt = np.einsum("ijkl->iljk", heightFilt)
+    for t in range(T):
+        for z in range(Z):
+            heightFilt[t, z] = ndimage.uniform_filter(heightFilt[t, z], (20, 20))
+
+    # heightFilt = np.asarray(heightFilt * 254, "uint8")
+    # tifffile.imwrite(f"heightFilt.tif", heightFilt)
+
+    channel = channel * heightFilt
 
     return channel
 
@@ -263,16 +258,13 @@ def focusStack(image, focusRange):
             )
             variance[t, z] = winSqrMean - winMean ** 2
 
-    for t in range(T):
-        varianceMax[t] = np.max(variance[t], axis=0)
+    varianceMax = np.max(variance, axis=1)
 
-    for t in range(T):
-        for z in range(Z):
-            surface[t][variance[t, z] == varianceMax[t]] = z
+    for z in range(Z):
+        surface[variance[:, z] == varianceMax] = z
 
-    for t in range(T):
-        for z in range(Z):
-            focus[t][surface[t] == z] = image[t, z][surface[t] == z]
+    for z in range(Z):
+        focus[surface == z] = image[:, z][surface == z]
 
     surface = surface.astype("uint8")
     focus = focus.astype("uint8")

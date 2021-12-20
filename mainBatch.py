@@ -81,35 +81,35 @@ for filename in filenames:
         ij,
         filename,
     )
-    utilBatch.deepLearning(filename)
-    utilBatch.trackMate(filename)
+#     utilBatch.deepLearning(filename)
+#     utilBatch.trackMate(filename)
 
-for filename in filenames:
-    print("-----------------------------------------------------------")
-    print(f"{filename}")
-    print("-----------------------------------------------------------")
-    print("Running pixel classification (WEKA) Ecad")
+# for filename in filenames:
+#     print("-----------------------------------------------------------")
+#     print(f"{filename}")
+#     print("-----------------------------------------------------------")
+#     print("Running pixel classification (WEKA) Ecad")
 
-    utilBatch.weka(
-        ij,
-        filename,
-        ecad_model_path,
-        "ecad",
-        "ecadProb",
-    )
+#     utilBatch.weka(
+#         ij,
+#         filename,
+#         ecad_model_path,
+#         "ecad",
+#         "ecadProb",
+#     )
 
-    # print("Running pixel classification (WEKA) out of plane")
+# print("Running pixel classification (WEKA) out of plane")
 
-    # utilBatch.weka(
-    #     ij,
-    #     filename,
-    #     outOfPlane_model_path,
-    #     "ecad",
-    #     "woundProb",
-    # )
+# utilBatch.weka(
+#     ij,
+#     filename,
+#     outOfPlane_model_path,
+#     "ecad",
+#     "woundProb",
+# )
 
-    # if "Wound" in filename:
-    #     utilBatch.woundsite(ij, filename)
+# if "Wound" in filename:
+#     utilBatch.woundsite(ij, filename)
 
 
 # At this point the analysis is complete

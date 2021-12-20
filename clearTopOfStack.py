@@ -15,11 +15,12 @@ stack = sm.io.imread(stackFile).astype(int)
 T, Z, C, X, Y = stack.shape
 zero = np.zeros([T, Z, C, X, Y])
 
-if True:
+# Clear backwards
+if False:
     # Settings Ecad Time:Depth
 
-    time = [27, 49, 56, 67, 73]
-    depth = [1, 2, 3, 4, 5]  # (+1)
+    time = [0]
+    depth = np.array([0]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
@@ -27,11 +28,31 @@ if True:
 if True:
     # Settings H2 Time:Depth
 
-    time = [27, 49, 56, 67, 73]
-    depth = [1, 2, 3, 4, 5]  # (+1)
+    time = [0]
+    depth = np.array([8]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 1] = zero[t:, :z, 1]
 
+# Clear forwards
+if False:
+    # Settings Ecad Time:Depth
+
+    time = [0]
+    depth = np.array([0]) + 1
+
+    for t, z in zip(time, depth):
+        stack[:t, :z, 0] = zero[:t, :z, 0]
+
+if False:
+    # Settings H2 Time:Depth
+
+    time = [0]
+    depth = np.array([2]) + 1
+
+    for t, z in zip(time, depth):
+        stack[:t, :z, 1] = zero[:t, :z, 1]
+
+
 stack = np.asarray(stack, "uint8")
-tifffile.imwrite(f"datProcessing/{filename}/clear{filename}.tif", stack)
+tifffile.imwrite(f"datProcessing/{filename}/clear{filename}.tif", stack, imagej=True)

@@ -5,3 +5,7 @@
 /src
 pythonText.txt
 tests
+wekaBourdary.tif
+wekaWoundBourdary.tif
+cellBoundary.model
+wound.model

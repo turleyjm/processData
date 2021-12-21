@@ -91,18 +91,18 @@ for filename in filenames:
         "ecadProb",
     )
 
-    # print("Running pixel classification (WEKA) out of plane")
+    print("Running pixel classification (WEKA) out of plane")
 
-    # utilBatch.weka(
-    #     ij,
-    #     filename,
-    #     outOfPlane_model_path,
-    #     "ecad",
-    #     "woundProb",
-    # )
+    utilBatch.weka(
+        ij,
+        filename,
+        outOfPlane_model_path,
+        "ecad",
+        "woundProb",
+    )
 
-    # if "Wound" in filename:
-    #     utilBatch.woundsite(ij, filename)
+    if "Wound" in filename:
+        utilBatch.woundsite(ij, filename)
 
 
 # At this point the analysis is complete

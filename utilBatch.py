@@ -63,7 +63,7 @@ def process_stack(ij, filename):
     ecadNormalise = normalise(ecadFocus, "MEDIAN", 60)
     h2Normalise = normalise(h2Focus, "UPPER_Q", 60)
 
-    if True:
+    if False:
         ecadNormalise = np.asarray(ecadNormalise, "uint8")
         tifffile.imwrite(
             f"datProcessing/{filename}/ecadFocus{filename}.tif", ecadNormalise
@@ -92,7 +92,11 @@ def process_stack(ij, filename):
     migration = normaliseMigration(migration, "MEDIAN", 10)
 
     tifffile.imwrite(
-        f"datProcessing/{filename}/migration{filename}.tif", migration, imagej=True
+        f"datProcessing/{filename}/migration{filename}.tif",
+        migration,
+        shape=[2, 3, 512, 512],
+        imagej=True,
+        metadata={"axes": "TZYX"},
     )
 
 
@@ -378,12 +382,11 @@ def deepLearning(filename):
 
     print("Deep Learning Input")
 
-    ecadFocus = sm.io.imread(
-        f"datProcessing/{filename}/ecadFocus{filename}.tif"
-    ).astype(int)
-    h2Focus = sm.io.imread(f"datProcessing/{filename}/h2Focus{filename}.tif").astype(
-        int
-    )
+    focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
+
+    ecadFocus = focus[:, :, :, 1]
+    h2Focus = focus[:, :, :, 0]
+
     (T, Y, X) = ecadFocus.shape
 
     input3h = np.zeros([T - 2, 512, 512, 3])
@@ -399,9 +402,9 @@ def deepLearning(filename):
         input3h[t, :, :, 2] = h2Focus[t + 2]
 
     input1e2h = np.asarray(input1e2h, "uint8")
-    tifffile.imwrite(f"uploadDL/input1e2h{filename}.tif", input1e2h)
+    tifffile.imwrite(f"datProcessing/uploadDL/input1e2h{filename}.tif", input1e2h)
     input3h = np.asarray(input3h, "uint8")
-    tifffile.imwrite(f"uploadDL/input3h{filename}.tif", input3h)
+    tifffile.imwrite(f"datProcessing/uploadDL/input3h{filename}.tif", input3h)
 
 
 def trackMate(filename):
@@ -438,7 +441,6 @@ def trackMate(filename):
     )
     FeatureFilter = sj.jimport("fiji.plugin.trackmate.features.FeatureFilter")
     ImagePlus = sj.jimport("ij.ImagePlus")
-    print("done")
 
     stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/migration{filename}.tif"
     xmlPath = (stack_path.rsplit(".tif"))[0]
@@ -447,7 +449,6 @@ def trackMate(filename):
     imp = ImagePlus(stack_path)
     model = Model()
     model.setLogger(Logger.IJ_LOGGER)
-
     settings = Settings()
     settings.setFrom(imp)
     settings.detectorFactory = Factory()

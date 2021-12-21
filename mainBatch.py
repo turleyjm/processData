@@ -22,13 +22,11 @@ else:
 filenames, fileType = cl.getFilesType()
 filename = filenames[0]
 
-ecad_model_path = "/Users/jt15004/Documents/Coding/classifiers/cellBoundary.model"
-h2_model_path = "/Users/jt15004/Documents/Coding/classifiers/mitosis2.model"
-outOfPlane_model_path = "/Users/jt15004/Documents/Coding/classifiers/wound.model"
+ecad_model_path = "/Users/jt15004/Documents/python/processData/cellBoundary.model"
+outOfPlane_model_path = "/Users/jt15004/Documents/python/processData/wound.model"
 
 config["defaults"] = {
     "ecad_model_path": ecad_model_path,
-    "h2_model_path": h2_model_path,
     "outOfPlane_model_path": outOfPlane_model_path,
 }
 
@@ -81,8 +79,8 @@ for filename in filenames:
         ij,
         filename,
     )
-#     utilBatch.deepLearning(filename)
-#     utilBatch.trackMate(filename)
+    utilBatch.deepLearning(filename)
+    utilBatch.trackMate(filename)
 
 # for filename in filenames:
 #     print("-----------------------------------------------------------")

@@ -9,3 +9,4 @@ wekaBourdary.tif
 wekaWoundBourdary.tif
 cellBoundary.model
 wound.model
+__pycache__

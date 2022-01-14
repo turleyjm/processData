@@ -19,13 +19,13 @@ zero = np.zeros([T, Z, C, X, Y])
 if False:
     # Settings Ecad Time:Depth
 
-    time = [0]
-    depth = np.array([0]) + 1
+    time = [26, 33, 59]
+    depth = np.array([0, 1, 6]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
 
-if True:
+if False:
     # Settings H2 Time:Depth
 
     time = [0]
@@ -44,11 +44,11 @@ if False:
     for t, z in zip(time, depth):
         stack[:t, :z, 0] = zero[:t, :z, 0]
 
-if False:
+if True:
     # Settings H2 Time:Depth
 
-    time = [0]
-    depth = np.array([2]) + 1
+    time = [18, 31, 35, 92]
+    depth = np.array([10, 7, 5, 4]) + 1
 
     for t, z in zip(time, depth):
         stack[:t, :z, 1] = zero[:t, :z, 1]

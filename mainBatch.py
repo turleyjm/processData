@@ -4,6 +4,7 @@ import imagej
 import os
 import scyjava as sj
 import utilBatch
+from os.path import exists
 
 from pathlib import Path
 import commonLiberty as cl
@@ -22,10 +23,12 @@ else:
 filenames, fileType = cl.getFilesType()
 filename = filenames[0]
 
-ecad_model_path = "/Users/jt15004/Documents/python/processData/cellBoundary.model"
-outOfPlane_model_path = "/Users/jt15004/Documents/python/processData/wound.model"
+stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
+ecad_model_path = "/Users/jt15004/Documents/Coding/classifiers/cellBoundary.model"
+outOfPlane_model_path = "/Users/jt15004/Documents/Coding/classifiers/wound.model"
 
 config["defaults"] = {
+    "stack_path": stack_path,
     "ecad_model_path": ecad_model_path,
     "outOfPlane_model_path": outOfPlane_model_path,
 }
@@ -75,39 +78,52 @@ for filename in filenames:
     print("-----------------------------------------------------------")
     print(f"{filename}")
     print("-----------------------------------------------------------")
-    utilBatch.process_stack(
-        ij,
-        filename,
-    )
-    utilBatch.deepLearning(filename)
-    utilBatch.trackMate(filename)
+    print("")
+    path_to_file = f"datProcessing/{filename}/migration{filename}.tif"
+    if False == exists(path_to_file):
+        utilBatch.process_stack(
+            ij,
+            filename,
+        )
+        utilBatch.deepLearning(filename)
 
-# for filename in filenames:
-#     print("-----------------------------------------------------------")
-#     print(f"{filename}")
-#     print("-----------------------------------------------------------")
-#     print("Running pixel classification (WEKA) Ecad")
+    path_to_file = f"datProcessing/{filename}/ecadProb{filename}.tif"
+    if False == exists(path_to_file):
+        stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 
-#     utilBatch.weka(
-#         ij,
-#         filename,
-#         ecad_model_path,
-#         "ecad",
-#         "ecadProb",
-#     )
+        print("Running pixel classification (WEKA) Ecad")
+        utilBatch.weka(
+            ij,
+            filename,
+            ecad_model_path,
+            "ecadProb",
+        )
 
-# print("Running pixel classification (WEKA) out of plane")
+    path_to_file = f"datProcessing/{filename}/woundProb{filename}.tif"
+    if False == exists(path_to_file):
+        stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 
-# utilBatch.weka(
-#     ij,
-#     filename,
-#     outOfPlane_model_path,
-#     "ecad",
-#     "woundProb",
-# )
+        print("Running pixel classification (WEKA) out of plane")
+        utilBatch.weka(
+            ij,
+            filename,
+            outOfPlane_model_path,
+            "woundProb",
+        )
 
-# if "Wound" in filename:
-#     utilBatch.woundsite(ij, filename)
+    path_to_file = f"datProcessing/{filename}/outPlane{filename}.tif"
+    if False == exists(path_to_file):
+        print("Out of Plane Zones")
+        utilBatch.outPlane(ij, filename)
+
+    path_to_file = f"datProcessing/{filename}/migration{filename}.xml"
+    if False == exists(path_to_file):
+        utilBatch.trackMate(filename)
+
+    path_to_file = f"datProcessing/{filename}/nucleusVelocity{filename}.pkl"
+    if False == exists(path_to_file):
+        print("Make Velocity Database")
+        utilBatch.nucleusVelocity(filename)
 
 
 # At this point the analysis is complete

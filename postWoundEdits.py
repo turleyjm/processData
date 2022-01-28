@@ -3,7 +3,7 @@ import configparser
 import imagej
 import os
 import scyjava as sj
-import utilBatch
+import util
 from os.path import exists
 
 from pathlib import Path
@@ -21,9 +21,9 @@ for filename in filenames:
         path_to_file = f"datProcessing/{filename}/woundsite{filename}.pkl"
         if False == exists(path_to_file):
             print("Make Wound Database")
-            utilBatch.woundsite(filename)
+            util.woundsite(filename)
 
     path_to_file = f"datProcessing/{filename}/imagesForSeg/ecadProb{filename}_000.tif"
     if False == exists(path_to_file):
         print("Save for Segmentation")
-        utilBatch.saveForSeg(filename)
+        util.saveForSeg(filename)

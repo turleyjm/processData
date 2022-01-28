@@ -18,6 +18,10 @@ from collections import Counter
 import scipy as sp
 import xml.etree.ElementTree as et
 
+### IMPORTS ###
+import configparser
+from pathlib import Path
+
 
 def current_time():
     now = datetime.now()
@@ -50,6 +54,9 @@ def process_stack(ij, filename):
     stack = sm.io.imread(stackFile).astype(int)
 
     (T, Z, C, Y, X) = stack.shape
+
+    stack = np.asarray(stack, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/_{filename}.tif", stack, imagej=True)
 
     surface = getSurface(stack[:, :, 0])
     if True:
@@ -108,21 +115,23 @@ def process_stack(ij, filename):
     print("Migration Stack")
     # print(current_time())
 
-    migration = stack[:, :, 1]
-
-    for t in range(T):
-        migration[t] = ndimage.median_filter(migration[t], size=(3, 3, 3))
-
-    migration = np.asarray(stack[:, :, 1], "uint8")
-    migration = normaliseMigration(migration, "MEDIAN", 10)
-
-    tifffile.imwrite(
-        f"datProcessing/{filename}/migration{filename}.tif",
-        migration,
-        shape=[2, 3, 512, 512],
-        imagej=True,
-        metadata={"axes": "TZYX"},
+    macro = """
+        open("%s");
+        main_win = getTitle();
+        run("Duplicate...", "duplicate channels=2");
+        H2_win = getTitle();
+        selectWindow(main_win);
+        close();
+        selectWindow(H2_win);
+        run("Median 3D...", "x=3 y=3 z=3");
+        saveAs("Tiff", "%s");
+    """ % (
+        f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/_{filename}.tif",
+        f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/migration{filename}.tif",
     )
+
+    ij.script().run("macro.ijm", macro, True).get()
+    image_ij2 = ij.py.active_dataset()
 
 
 def weka(
@@ -669,8 +678,8 @@ def trackMate(filename):
     # Configure tracker
     settings.trackerFactory = SparseLAP()
     settings.trackerSettings = LAPUtils.getDefaultLAPSettingsMap()
-    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 8.0
-    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = 8.0
+    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 12.0
+    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = 12.0
     # Add ALL the feature analyzers known to TrackMate, via
     # providers.
     # They offer automatic analyzer detection, so all the

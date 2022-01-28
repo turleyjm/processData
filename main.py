@@ -3,7 +3,7 @@ import configparser
 import imagej
 import os
 import scyjava as sj
-import utilBatch
+import util
 from os.path import exists
 
 from pathlib import Path
@@ -81,18 +81,21 @@ for filename in filenames:
     print("")
     path_to_file = f"datProcessing/{filename}/migration{filename}.tif"
     if False == exists(path_to_file):
-        utilBatch.process_stack(
+        util.process_stack(
             ij,
             filename,
         )
-        utilBatch.deepLearning(filename)
+
+    path_to_file = f"datProcessing/uploadDL/input1e2h{filename}.tif"
+    if False == exists(path_to_file):
+        util.deepLearning(filename)
 
     path_to_file = f"datProcessing/{filename}/ecadProb{filename}.tif"
     if False == exists(path_to_file):
         stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 
         print("Running pixel classification (WEKA) Ecad")
-        utilBatch.weka(
+        util.weka(
             ij,
             filename,
             ecad_model_path,
@@ -104,26 +107,25 @@ for filename in filenames:
         stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 
         print("Running pixel classification (WEKA) out of plane")
-        utilBatch.weka(
+        util.weka(
             ij,
             filename,
             outOfPlane_model_path,
             "woundProb",
         )
-
     path_to_file = f"datProcessing/{filename}/outPlane{filename}.tif"
     if False == exists(path_to_file):
         print("Out of Plane Zones")
-        utilBatch.outPlane(ij, filename)
+        util.outPlane(ij, filename)
 
     path_to_file = f"datProcessing/{filename}/migration{filename}.xml"
     if False == exists(path_to_file):
-        utilBatch.trackMate(filename)
+        util.trackMate(filename)
 
     path_to_file = f"datProcessing/{filename}/nucleusVelocity{filename}.pkl"
     if False == exists(path_to_file):
         print("Make Velocity Database")
-        utilBatch.nucleusVelocity(filename)
+        util.nucleusVelocity(filename)
 
 
 # At this point the analysis is complete

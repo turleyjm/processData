@@ -133,6 +133,8 @@ def process_stack(ij, filename):
     ij.script().run("macro.ijm", macro, True).get()
     image_ij2 = ij.py.active_dataset()
 
+    os.remove(f"datProcessing/{filename}/_{filename}.tif")
+
 
 def weka(
     ij,
@@ -591,7 +593,7 @@ def woundsite(filename):
     tifffile.imwrite(f"datProcessing/{filename}/distanceWound{filename}.tif", dist)
 
 
-def deepLearning(filename):
+def deepLearningOld(filename):
 
     print("Deep Learning Input")
 
@@ -620,6 +622,31 @@ def deepLearning(filename):
     tifffile.imwrite(f"datProcessing/uploadDL/input3h{filename}.tif", input3h)
     focus = np.asarray(focus, "uint8")
     tifffile.imwrite(f"datProcessing/uploadDL/focus{filename}.tif", input3h)
+
+
+def deepLearning(filename):
+
+    print("Deep Learning Input")
+
+    focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
+
+    ecadFocus = focus[:, :, :, 1]
+    h2Focus = focus[:, :, :, 0]
+
+    (T, Y, X) = ecadFocus.shape
+
+    inputVid = np.zeros([T - 4, 10, 512, 512])
+
+    for i in range(5):
+        inputVid[:, 0 + 2 * i] = ecadFocus[i : T - 4 + i]
+        inputVid[:, 1 + 2 * i] = h2Focus[i : T - 4 + i]
+
+    inputVid = np.asarray(inputVid, "uint8")
+    for t in range(T - 4):
+        tifffile.imwrite(
+            f"datProcessing/uploadDL/{filename}_{t}.tif",
+            inputVid[t],
+        )
 
 
 def trackMate(filename):
@@ -915,35 +942,17 @@ def nucleusVelocity(filename):
                 y0 = y[j]
 
                 tdelta = tMax - t0
-                if tdelta > 5:
-                    t5 = t[j + 5]
-                    x5 = x[j + 5]
-                    y5 = y[j + 5]
+                if tdelta > 1:
+                    x1 = x[j + 1]
+                    y1 = y[j + 1]
 
-                    v = np.array([(x5 - x0) / 5, (y5 - y0) / 5])
+                    v = np.array([x1 - x0, y1 - y0])
 
                     _df2.append(
                         {
                             "Filename": filename,
                             "Label": label,
                             "T": t0,
-                            "X": x0,
-                            "Y": y0,
-                            "Velocity": v,
-                        }
-                    )
-                else:
-                    tEnd = t[-1]
-                    xEnd = x[-1]
-                    yEnd = y[-1]
-
-                    v = np.array([(xEnd - x0) / (tEnd - t0), (yEnd - y0) / (tEnd - t0)])
-
-                    _df2.append(
-                        {
-                            "Filename": filename,
-                            "Label": label,
-                            "T": int(t0),
                             "X": x0,
                             "Y": y0,
                             "Velocity": v,

@@ -74,6 +74,24 @@ print("Processing image")
 # into integers.  The third argument controls the mu calculation during
 # intensity normalisation.
 
+# filenames = [
+#     "Unwound18h13",
+#     "Unwound18h14",
+#     "Unwound18h15",
+#     "Unwound18h16",
+#     "Unwound18h17",
+#     "Unwound18h18",
+#     "WoundL18h10",
+#     "WoundL18h11",
+#     "WoundL18h13",
+#     "WoundS18h14",
+#     "WoundS18h15",
+#     "WoundS18h16",
+#     "WoundXL18h02",
+#     "WoundXL18h03",
+#     "WoundXL18h04",
+# ]
+
 for filename in filenames:
     print("-----------------------------------------------------------")
     print(f"{filename}")
@@ -86,7 +104,7 @@ for filename in filenames:
             filename,
         )
 
-    path_to_file = f"datProcessing/uploadDL/input1e2h{filename}.tif"
+    path_to_file = f"datProcessing/uploadDL/{filename}_{0}.tif"
     if False == exists(path_to_file):
         util.deepLearning(filename)
 

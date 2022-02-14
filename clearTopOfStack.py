@@ -25,11 +25,11 @@ if False:
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
 
-if False:
+if True:
     # Settings H2 Time:Depth
 
-    time = [0]
-    depth = np.array([8]) + 1
+    time = [0, 3, 29, 52, 57]
+    depth = np.array([1, 3, 5, 6, 7]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 1] = zero[t:, :z, 1]
@@ -44,7 +44,7 @@ if False:
     for t, z in zip(time, depth):
         stack[:t, :z, 0] = zero[:t, :z, 0]
 
-if True:
+if False:
     # Settings H2 Time:Depth
 
     time = [18, 31, 35, 92]

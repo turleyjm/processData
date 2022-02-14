@@ -104,7 +104,7 @@ for filename in filenames:
             filename,
         )
 
-    path_to_file = f"datProcessing/uploadDL/{filename}_{0}.tif"
+    path_to_file = f"datProcessing/dat_pred/focus{filename}.tif"
     if False == exists(path_to_file):
         util.deepLearning(filename)
 

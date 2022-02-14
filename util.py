@@ -628,7 +628,14 @@ def deepLearning(filename):
 
     print("Deep Learning Input")
 
+    cl.createFolder(f"datProcessing/dat_pred/{filename}")
+
     focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
+    focus = np.asarray(focus, "uint8")
+    tifffile.imwrite(
+        f"datProcessing/dat_pred/{filename}/focus{filename}.tif",
+        focus,
+    )
 
     ecadFocus = focus[:, :, :, 1]
     h2Focus = focus[:, :, :, 0]
@@ -644,7 +651,7 @@ def deepLearning(filename):
     inputVid = np.asarray(inputVid, "uint8")
     for t in range(T - 4):
         tifffile.imwrite(
-            f"datProcessing/uploadDL/{filename}_{t}.tif",
+            f"datProcessing/dat_pred/{filename}/{filename}_{t}.tif",
             inputVid[t],
         )
 

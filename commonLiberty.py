@@ -50,8 +50,8 @@ def getFilesType():
             filenames.remove(".DS_Store")
         if "woundDetails.xlsx" in filenames:
             filenames.remove("woundDetails.xlsx")
-        if "uploadDL" in filenames:
-            filenames.remove("uploadDL")
+        if "dat_pred" in filenames:
+            filenames.remove("dat_pred")
         if "confocalRawLocation.txt" in filenames:
             filenames.remove("confocalRawLocation.txt")
 

@@ -15,8 +15,8 @@ stack = sm.io.imread(stackFile).astype(int)
 T, Z, C, Y, X = stack.shape
 
 # Negative
-shift_x = -7
-shift_y = 84
+shift_x = 15
+shift_y = 30
 t = 0
 
 if shift_x < 0:

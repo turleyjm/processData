@@ -55,6 +55,12 @@ def process_stack(ij, filename):
 
     (T, Z, C, Y, X) = stack.shape
 
+    migration = np.zeros([T, Z, Y, X])
+
+    migration = normaliseMigration(stack[:, :, 1], "UPPER_Q", 60)
+
+    stack[:, :, 1] = migration
+
     stack = np.asarray(stack, "uint8")
     tifffile.imwrite(f"datProcessing/{filename}/_{filename}.tif", stack, imagej=True)
 
@@ -948,23 +954,21 @@ def nucleusVelocity(filename):
                 x0 = x[j]
                 y0 = y[j]
 
-                tdelta = tMax - t0
-                if tdelta > 1:
-                    x1 = x[j + 1]
-                    y1 = y[j + 1]
+                x1 = x[j + 1]
+                y1 = y[j + 1]
 
-                    v = np.array([x1 - x0, y1 - y0])
+                v = np.array([x1 - x0, y1 - y0])
 
-                    _df2.append(
-                        {
-                            "Filename": filename,
-                            "Label": label,
-                            "T": t0,
-                            "X": x0,
-                            "Y": y0,
-                            "Velocity": v,
-                        }
-                    )
+                _df2.append(
+                    {
+                        "Filename": filename,
+                        "Label": label,
+                        "T": t0,
+                        "X": x0,
+                        "Y": y0,
+                        "Velocity": v,
+                    }
+                )
 
     dfVelocity = pd.DataFrame(_df2)
 

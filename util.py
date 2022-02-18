@@ -465,7 +465,7 @@ def woundsite(filename):
     wound = sm.io.imread(f"datProcessing/{filename}/outPlane{filename}.tif").astype(int)
     (T, X, Y) = wound.shape
 
-    dfWoundDetails = pd.read_excel(f"datProcessing/WoundDetails.xlsx")
+    dfWoundDetails = pd.read_excel(f"datProcessing/WoundDetails.xls")
     dfWoundDetails["Wound centre Y"] = 512 - dfWoundDetails["Wound centre Y"]
     start = [0, 0]
     start[0] = int(

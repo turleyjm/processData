@@ -565,20 +565,31 @@ def woundsite(filename):
         y = [yf - 150, yf + 150]
         dfxy = sortGrid(dfVelocity[dfVelocity["T"] == t], x, y)
 
-        v = np.mean(list(dfxy["Velocity"]), axis=0)
+        if len(dfxy) == 0:
+            wound[t + 1] = 0
+            [x, y] = [int(xf), int(512 - yf)]
+            wound[t + 1][y - 2 : y + 2, x - 2 : x + 2] = 255
+            _dfWound.append(
+                {
+                    "Time": t,
+                    "Position": (xf, yf),
+                }
+            )
+        else:
+            v = np.mean(list(dfxy["Velocity"]), axis=0)
 
-        xf = xf + v[0]
-        yf = yf + v[1]
+            xf = xf + v[0]
+            yf = yf + v[1]
 
-        wound[t + 1] = 0
-        [x, y] = [int(xf), int(512 - yf)]
-        wound[t + 1][y - 2 : y + 2, x - 2 : x + 2] = 255
-        _dfWound.append(
-            {
-                "Time": t,
-                "Position": (xf, yf),
-            }
-        )
+            wound[t + 1] = 0
+            [x, y] = [int(xf), int(512 - yf)]
+            wound[t + 1][y - 2 : y + 2, x - 2 : x + 2] = 255
+            _dfWound.append(
+                {
+                    "Time": t,
+                    "Position": (xf, yf),
+                }
+            )
 
     _dfWound.append(
         {

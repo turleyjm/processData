@@ -332,7 +332,7 @@ def angle(u1, u2, v1, v2):
 def inArea(polys, muArea, sdArea):
     polygon = Polygon(polys)
     area = polygon.area
-    if area > muArea + 5 * sdArea:
+    if area > 2500:
         return False
     else:
         return True
@@ -371,7 +371,7 @@ def tooBig(allPolys, allContours):
 def removeCells(allPolys, allContours):
 
     allPolys, allContours = noArea(allPolys, allContours)
-    allPolys, allContours = convex(allPolys, allContours)
+    # allPolys, allContours = convex(allPolys, allContours)
     allPolys, allContours = tooBig(allPolys, allContours)
     allPolys, allContours = simple(allPolys, allContours)
     allPolys, allContours = boundary(allPolys, allContours)

@@ -558,7 +558,7 @@ def woundsite(filename):
                 )
 
     xf, yf = cell.centroid(polygon)
-    tf = t
+    tf = t + 1
     for t in range(tf, T - 1):
 
         x = [xf - 150, xf + 150]
@@ -608,6 +608,41 @@ def woundsite(filename):
 
     dist = np.asarray(dist, "uint16")
     tifffile.imwrite(f"datProcessing/{filename}/distanceWound{filename}.tif", dist)
+
+
+def distance(filename):
+
+    df = pd.read_pickle(f"dat/{filename}/nucleusVelocity{filename}.pkl")
+    mig = np.zeros(2)
+    T = np.max(df["T"])
+
+    _df = []
+    for t in range(T):
+        dft = df[df["T"] == t]
+        v = np.mean(dft["Velocity"])
+        _df.append(
+            {
+                "Filename": filename,
+                "T": t,
+                "v": v,
+            }
+        )
+
+    df = pd.DataFrame(_df)
+    dist = []
+    N = len(df)
+
+    mig = np.array([256, 256])
+    for t in range(N):
+
+        img = np.zeros([512, 512])
+        img[int(mig[0]), int(mig[1])] = 255
+        img = 255 - img
+        dist.append(sp.ndimage.morphology.distance_transform_edt(img))
+        mig = mig + df["v"].iloc[t]
+
+    dist = np.asarray(dist, "uint16")
+    tifffile.imwrite(f"dat/{filename}/distanceWound{filename}.tif", dist)
 
 
 def deepLearningOld(filename):

@@ -607,7 +607,10 @@ def woundsite(filename):
         dist.append(sp.ndimage.morphology.distance_transform_edt(img))
 
     dist = np.asarray(dist, "uint16")
-    tifffile.imwrite(f"datProcessing/{filename}/distanceWound{filename}.tif", dist)
+    for t in range(len(dist)):
+        img = imgxyrc(dist[t])
+        dist[t] = img
+    tifffile.imwrite(f"datProcessing/{filename}/distance{filename}.tif", dist)
 
 
 def distance(filename):
@@ -642,7 +645,101 @@ def distance(filename):
         mig = mig + df["v"].iloc[t]
 
     dist = np.asarray(dist, "uint16")
-    tifffile.imwrite(f"dat/{filename}/distanceWound{filename}.tif", dist)
+
+    for t in range(len(dist)):
+        img = imgxyrc(dist[t])
+        dist[t] = img
+    tifffile.imwrite(f"dat/{filename}/distance{filename}.tif", dist)
+
+
+def imgrcxy(img):
+
+    n = len(img)
+
+    imgxy = np.zeros(shape=(n, n))
+
+    for x in range(n):
+        for y in range(n):
+
+            imgxy[x, y] = img[(n - 1) - y, x]
+
+    return imgxy
+
+
+def imgxyrc(imgxy):
+
+    img = imgrcxy(imgxy)
+    img = imgrcxy(img)
+    img = imgrcxy(img)
+
+    return img
+
+
+def angle(filename):
+    if "Wound" in filename:
+        df = pd.read_pickle(f"dat/{filename}/nucleusVelocity{filename}.pkl")
+        T = int(np.max(df["T"]))
+        df = pd.read_pickle(f"dat/{filename}/woundsite{filename}.pkl")
+        angle = np.zeros([T, 512, 512])
+
+        y, x = np.mgrid[-512:512:1, -512:512:1]
+        y = -y
+        theta = np.arctan2(y, x) * 180 / np.pi
+        theta = theta % 360
+
+        mig = np.array([256, 256])
+        for t in range(T):
+            mig = np.array(df["Position"].iloc[t])
+            if mig[0] < 0:
+                mig[0] = 0
+            img = theta[
+                int(mig[1]) : (512 + int(mig[1])),
+                512 - int(mig[0]) : (1024 - int(mig[0])),
+            ]
+            angle[t] = img
+
+        angle = np.asarray(angle, "uint16")
+        tifffile.imwrite(f"dat/{filename}/angle{filename}.tif", angle)
+    else:
+        df = pd.read_pickle(f"dat/{filename}/nucleusVelocity{filename}.pkl")
+        mig = np.zeros(2)
+        T = np.max(df["T"])
+
+        _df = []
+        for t in range(int(T)):
+            dft = df[df["T"] == t]
+            v = np.mean(dft["Velocity"])
+            _df.append(
+                {
+                    "Filename": filename,
+                    "T": t,
+                    "v": v,
+                }
+            )
+
+        df = pd.DataFrame(_df)
+        N = len(df)
+        angle = np.zeros([N, 512, 512])
+
+        y, x = np.mgrid[-512:512:1, -512:512:1]
+        y = -y
+        theta = np.arctan2(y, x) * 180 / np.pi
+        theta = theta % 360
+
+        mig = np.array([256, 256])
+        for t in range(N):
+
+            img = theta[
+                int(mig[1]) : (512 + int(mig[1])),
+                512 - int(mig[0]) : (1024 - int(mig[0])),
+            ]
+            angle[t] = img
+            mig = mig + df["v"].iloc[t]
+            if mig[0] < 0:
+                mig[0] = 0
+
+        angle = np.asarray(angle, "uint16")
+        tifffile.imwrite(f"dat/{filename}/angle{filename}.tif", angle)
 
 
 def deepLearningOld(filename):

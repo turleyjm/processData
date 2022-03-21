@@ -23,10 +23,15 @@ for filename in filenames:
             print("Make Wound Database")
             util.woundsite(filename)
     else:
-        path_to_file = f"datProcessing/{filename}/distanceWound{filename}.pkl"
+        path_to_file = f"datProcessing/{filename}/distance{filename}.pkl"
         if False == exists(path_to_file):
             print("Make Distance")
             util.distance(filename)
+
+    path_to_file = f"datProcessing/{filename}/angle{filename}.pkl"
+    if False == exists(path_to_file):
+        print("Make Angle")
+        util.angle(filename)
 
     path_to_file = f"datProcessing/{filename}/imagesForSeg/ecadProb{filename}_000.tif"
     if False == exists(path_to_file):

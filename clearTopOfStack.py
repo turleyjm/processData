@@ -16,11 +16,11 @@ T, Z, C, X, Y = stack.shape
 zero = np.zeros([T, Z, C, X, Y])
 
 # Clear backwards
-if False:
+if True:
     # Settings Ecad Time:Depth
 
-    time = [26, 33, 59]
-    depth = np.array([0, 1, 6]) + 1
+    time = [0, 8, 12, 42, 61, 40]
+    depth = np.array([3, 5, 7, 11, 19, 7]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
@@ -28,8 +28,8 @@ if False:
 if True:
     # Settings H2 Time:Depth
 
-    time = [0, 3, 29, 52, 57]
-    depth = np.array([1, 3, 5, 6, 7]) + 1
+    time = [0, 5, 9, 30, 35, 40, 43, 46]
+    depth = np.array([6, 7, 9, 11, 17, 22, 28, 32]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 1] = zero[t:, :z, 1]

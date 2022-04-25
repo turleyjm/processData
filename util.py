@@ -99,7 +99,7 @@ def process_stack(ij, filename):
     # print(current_time())
 
     ecadNormalise = normalise(ecadFocus, "MEDIAN", 60)
-    h2Normalise = normalise(h2Focus, "UPPER_Q", 60)
+    h2Normalise = normalise(h2Focus, "UPPER_Q", 90)
 
     if False:
         ecadNormalise = np.asarray(ecadNormalise, "uint8")
@@ -256,7 +256,7 @@ def getSurface(ecad):
         for z in range(Z):
             win_mean = ndimage.uniform_filter(ecad[t, z], (40, 40))
             win_sqr_mean = ndimage.uniform_filter(ecad[t, z] ** 2, (40, 40))
-            variance[t, z] = win_sqr_mean - win_mean ** 2
+            variance[t, z] = win_sqr_mean - win_mean**2
 
     win_sqr_mean = 0
     win_mean = 0
@@ -332,7 +332,7 @@ def focusStack(image, focusRange):
             winSqrMean = ndimage.uniform_filter(
                 image[t, z] ** 2, (focusRange, focusRange)
             )
-            variance[t, z] = winSqrMean - winMean ** 2
+            variance[t, z] = winSqrMean - winMean**2
 
     varianceMax = np.max(variance, axis=1)
 
@@ -465,7 +465,7 @@ def woundsite(filename):
     wound = sm.io.imread(f"datProcessing/{filename}/outPlane{filename}.tif").astype(int)
     (T, X, Y) = wound.shape
 
-    dfWoundDetails = pd.read_excel(f"datProcessing/WoundDetails.xls")
+    dfWoundDetails = pd.read_excel(f"datProcessing/WoundDetails.xlsx")
     dfWoundDetails["Wound centre Y"] = 512 - dfWoundDetails["Wound centre Y"]
     start = [0, 0]
     start[0] = int(
@@ -615,9 +615,9 @@ def woundsite(filename):
 
 def distance(filename):
 
-    df = pd.read_pickle(f"dat/{filename}/nucleusVelocity{filename}.pkl")
+    df = pd.read_pickle(f"datProcessing/{filename}/nucleusVelocity{filename}.pkl")
     mig = np.zeros(2)
-    T = np.max(df["T"])
+    T = int(np.max(df["T"]))
 
     _df = []
     for t in range(T):
@@ -649,7 +649,7 @@ def distance(filename):
     for t in range(len(dist)):
         img = imgxyrc(dist[t])
         dist[t] = img
-    tifffile.imwrite(f"dat/{filename}/distance{filename}.tif", dist)
+    tifffile.imwrite(f"datProcessing/{filename}/distance{filename}.tif", dist)
 
 
 def imgrcxy(img):
@@ -677,9 +677,9 @@ def imgxyrc(imgxy):
 
 def angle(filename):
     if "Wound" in filename:
-        df = pd.read_pickle(f"dat/{filename}/nucleusVelocity{filename}.pkl")
+        df = pd.read_pickle(f"datProcessing/{filename}/nucleusVelocity{filename}.pkl")
         T = int(np.max(df["T"]))
-        df = pd.read_pickle(f"dat/{filename}/woundsite{filename}.pkl")
+        df = pd.read_pickle(f"datProcessing/{filename}/woundsite{filename}.pkl")
         angle = np.zeros([T, 512, 512])
 
         y, x = np.mgrid[-512:512:1, -512:512:1]
@@ -699,9 +699,9 @@ def angle(filename):
             angle[t] = img
 
         angle = np.asarray(angle, "uint16")
-        tifffile.imwrite(f"dat/{filename}/angle{filename}.tif", angle)
+        tifffile.imwrite(f"datProcessing/{filename}/angle{filename}.tif", angle)
     else:
-        df = pd.read_pickle(f"dat/{filename}/nucleusVelocity{filename}.pkl")
+        df = pd.read_pickle(f"datProcessing/{filename}/nucleusVelocity{filename}.pkl")
         mig = np.zeros(2)
         T = np.max(df["T"])
 
@@ -739,7 +739,7 @@ def angle(filename):
                 mig[0] = 0
 
         angle = np.asarray(angle, "uint16")
-        tifffile.imwrite(f"dat/{filename}/angle{filename}.tif", angle)
+        tifffile.imwrite(f"datProcessing/{filename}/angle{filename}.tif", angle)
 
 
 def deepLearningOld(filename):
@@ -1122,12 +1122,9 @@ def saveForSeg(filename):
 
     vid = sm.io.imread(f"datProcessing/{filename}/ecadProb{filename}.tif").astype(int)
     if "Wound" in filename:
-        dist = sm.io.imread(
-            f"datProcessing/{filename}/distanceWound{filename}.tif"
-        ).astype(int)
-        [T, X, Y] = dist.shape
-        for t in range(T):
-            dist[t] = cl.imgxyrc(dist[t])
+        dist = sm.io.imread(f"datProcessing/{filename}/distance{filename}.tif").astype(
+            int
+        )
         vid[dist == 0] = 0
 
     cl.createFolder(f"datProcessing/{filename}/imagesForSeg")

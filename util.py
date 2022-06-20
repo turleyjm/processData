@@ -256,7 +256,7 @@ def getSurface(ecad):
         for z in range(Z):
             win_mean = ndimage.uniform_filter(ecad[t, z], (40, 40))
             win_sqr_mean = ndimage.uniform_filter(ecad[t, z] ** 2, (40, 40))
-            variance[t, z] = win_sqr_mean - win_mean**2
+            variance[t, z] = win_sqr_mean - win_mean ** 2
 
     win_sqr_mean = 0
     win_mean = 0
@@ -332,7 +332,7 @@ def focusStack(image, focusRange):
             winSqrMean = ndimage.uniform_filter(
                 image[t, z] ** 2, (focusRange, focusRange)
             )
-            variance[t, z] = winSqrMean - winMean**2
+            variance[t, z] = winSqrMean - winMean ** 2
 
     varianceMax = np.max(variance, axis=1)
 
@@ -796,6 +796,37 @@ def deepLearning(filename):
     for i in range(5):
         inputVid[:, 0 + 2 * i] = ecadFocus[i : T - 4 + i]
         inputVid[:, 1 + 2 * i] = h2Focus[i : T - 4 + i]
+
+    inputVid = np.asarray(inputVid, "uint8")
+    for t in range(T - 4):
+        tifffile.imwrite(
+            f"datProcessing/dat_pred/{filename}/{filename}_{t}.tif",
+            inputVid[t],
+        )
+
+
+def deepLearning3(filename):
+
+    print("Deep Learning Input")
+
+    cl.createFolder(f"datProcessing/dat_pred/{filename}")
+
+    focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
+    focus = np.asarray(focus, "uint8")
+    tifffile.imwrite(
+        f"datProcessing/dat_pred/{filename}/focus{filename}.tif",
+        focus,
+    )
+
+    ecadFocus = focus[:, :, :, 1]
+    h2Focus = focus[:, :, :, 0]
+
+    (T, Y, X) = ecadFocus.shape
+
+    inputVid = np.zeros([T - 4, 3, 512, 512])
+
+    for i in range(3):
+        inputVid[:, i] = h2Focus[i + 1 : T - 3 + i]
 
     inputVid = np.asarray(inputVid, "uint8")
     for t in range(T - 4):

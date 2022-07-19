@@ -74,23 +74,23 @@ print("Processing image")
 # into integers.  The third argument controls the mu calculation during
 # intensity normalisation.
 
-filenames = [
-    "Unwound18h13",
-    "Unwound18h14",
-    "Unwound18h15",
-    "Unwound18h16",
-    "Unwound18h17",
-    "Unwound18h18",
-    "WoundL18h10",
-    "WoundL18h11",
-    "WoundL18h13",
-    "WoundS18h14",
-    "WoundS18h15",
-    "WoundS18h16",
-    "WoundXL18h02",
-    "WoundXL18h03",
-    "WoundXL18h04",
-]
+# filenames = [
+#     "Unwound18h13",
+#     "Unwound18h14",
+#     "Unwound18h15",
+#     "Unwound18h16",
+#     "Unwound18h17",
+#     "Unwound18h18",
+#     "WoundL18h10",
+#     "WoundL18h11",
+#     "WoundL18h13",
+#     "WoundS18h14",
+#     "WoundS18h15",
+#     "WoundS18h16",
+#     "WoundXL18h02",
+#     "WoundXL18h03",
+#     "WoundXL18h04",
+# ]
 # filenames = [
 #     "Unwound18h20",
 #     "Unwound18h19",

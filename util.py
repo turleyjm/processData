@@ -833,6 +833,7 @@ def deepLearning3(filename):
         tifffile.imwrite(
             f"datProcessing/dat_pred/{filename}/{filename}_{t}.tif",
             inputVid[t],
+            imagej=True,
         )
 
 

@@ -9,7 +9,7 @@ import tifffile
 
 f = open("pythonText.txt", "r")
 
-filename = f.read()
+filename = "WoundXLJNK04"
 stackFile = f"datProcessing/{filename}/{filename}.tif"
 stack = sm.io.imread(stackFile).astype(int)
 T, Z, C, X, Y = stack.shape
@@ -19,8 +19,8 @@ zero = np.zeros([T, Z, C, X, Y])
 if True:
     # Settings Ecad Time:Depth
 
-    time = [0, 8, 12, 42, 61, 40]
-    depth = np.array([3, 5, 7, 11, 19, 7]) + 1
+    time = [3, 6, 10, 12, 19, 23, 25, 29, 30, 40, 43, 44]
+    depth = np.array([2, 3, 5, 6, 8, 10, 12, 14, 19, 22, 24, 26]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
@@ -28,8 +28,8 @@ if True:
 if True:
     # Settings H2 Time:Depth
 
-    time = [0, 5, 9, 30, 35, 40, 43, 46]
-    depth = np.array([6, 7, 9, 11, 17, 22, 28, 32]) + 1
+    time = [3, 6, 10, 12, 19, 23, 25, 29, 30, 40, 43]
+    depth = np.array([4, 5, 8, 9, 10, 14, 17, 23, 26, 28, 30]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 1] = zero[t:, :z, 1]

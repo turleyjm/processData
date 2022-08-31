@@ -4,7 +4,7 @@ import gui
 import imagej
 import os
 import scyjava as sj
-import util
+import utils
 
 from pathlib import Path
 
@@ -122,7 +122,7 @@ print("Processing Ecad image")
 # Furthermore, the numeric values are converted from strings (the GUI output)
 # into integers.  The third argument controls the mu calculation during
 # intensity normalisation.
-util.process_stack(
+utils.process_stack(
     ij,
     g.ecad_path,
     "MEAN",
@@ -137,7 +137,7 @@ util.process_stack(
 
 # # Processing H2 image stack
 print("Processing H2 image")
-util.process_stack(
+utils.process_stack(
     ij,
     g.h2_path,
     "UPPER_Q",

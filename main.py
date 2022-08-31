@@ -3,11 +3,11 @@ import configparser
 import imagej
 import os
 import scyjava as sj
-import util
+import functions
 from os.path import exists
 
 from pathlib import Path
-import commonLiberty as cl
+import utils as cl
 
 config_path = os.path.join(Path.home(), ".wbif", "autoseg.ini")
 
@@ -106,22 +106,21 @@ for filename in filenames:
     print("")
     path_to_file = f"datProcessing/{filename}/migration{filename}.tif"
     if False == exists(path_to_file):
-        util.process_stack(
+        functions.process_stack(
             ij,
             filename,
         )
 
     path_to_file = f"datProcessing/dat_pred/{filename}/focus{filename}.tif"
     if False == exists(path_to_file):
-        util.deepLearning(filename)
-        # util.deepLearning3(filename)
+        functions.deepLearning(filename)
 
     path_to_file = f"datProcessing/{filename}/ecadProb{filename}.tif"
     if False == exists(path_to_file):
         stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 
         print("Running pixel classification (WEKA) Ecad")
-        util.weka(
+        functions.weka(
             ij,
             filename,
             ecad_model_path,
@@ -133,7 +132,7 @@ for filename in filenames:
         stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{filename}.tif"
 
         print("Running pixel classification (WEKA) out of plane")
-        util.weka(
+        functions.weka(
             ij,
             filename,
             outOfPlane_model_path,
@@ -142,16 +141,16 @@ for filename in filenames:
     path_to_file = f"datProcessing/{filename}/outPlane{filename}.tif"
     if False == exists(path_to_file):
         print("Out of Plane Zones")
-        util.outPlane(ij, filename)
+        functions.outPlane(ij, filename)
 
     path_to_file = f"datProcessing/{filename}/migration{filename}.xml"
     if False == exists(path_to_file):
-        util.trackMate(filename)
+        functions.trackMate(filename)
 
     path_to_file = f"datProcessing/{filename}/nucleusVelocity{filename}.pkl"
     if False == exists(path_to_file):
         print("Make Velocity Database")
-        util.nucleusVelocity(filename)
+        functions.nucleusVelocity(filename)
 
 
 # At this point the analysis is complete

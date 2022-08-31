@@ -3,11 +3,11 @@ import configparser
 import imagej
 import os
 import scyjava as sj
-import util
+import functions
 from os.path import exists
 
 from pathlib import Path
-import commonLiberty as cl
+import utils as cl
 
 filenames, fileType = cl.getFilesType()
 
@@ -21,19 +21,19 @@ for filename in filenames:
         path_to_file = f"datProcessing/{filename}/woundsite{filename}.pkl"
         if False == exists(path_to_file):
             print("Make Wound Database")
-            util.woundsite(filename)
+            functions.woundsite(filename)
     else:
         path_to_file = f"datProcessing/{filename}/distance{filename}.pkl"
         if False == exists(path_to_file):
             print("Make Distance")
-            util.distance(filename)
+            functions.distance(filename)
 
     path_to_file = f"datProcessing/{filename}/angle{filename}.pkl"
     if False == exists(path_to_file):
         print("Make Angle")
-        util.angle(filename)
+        functions.angle(filename)
 
     path_to_file = f"datProcessing/{filename}/imagesForSeg/ecadProb{filename}_000.tif"
     if False == exists(path_to_file):
         print("Save for Segmentation")
-        util.saveForSeg(filename)
+        functions.saveForSeg(filename)

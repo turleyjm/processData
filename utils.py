@@ -27,17 +27,14 @@ plt.rcParams.update({"font.size": 20})
 
 # -------------------
 
+fileType = "Unwound18h13"
+# fileType = "WoundL"
+# fileType = "WoundS"
+# fileType = "Wound"
+# fileType = "All"
 
-def getFiles():
-    f = open("pythonText.txt", "r")
-    filenames = f.read()
-    filenames = filenames.split(", ")
-    return filenames
 
-
-def getFilesType():
-    f = open("pythonText.txt", "r")
-    fileType = f.read()
+def getFilesType(fileType=fileType):
 
     if fileType == "All":
         cwd = os.getcwd()
@@ -68,20 +65,6 @@ def getFilesType():
     filenames.sort()
 
     return filenames, fileType
-
-
-def getFilesOfType(fileType):
-
-    cwd = os.getcwd()
-    Fullfilenames = os.listdir(cwd + "/datProcessing")
-    filenames = []
-    for filename in Fullfilenames:
-        if fileType in filename:
-            filenames.append(filename)
-
-    filenames.sort()
-
-    return filenames
 
 
 def ThreeD(a):
@@ -334,7 +317,7 @@ def angle(u1, u2, v1, v2):
 def inArea(polys, muArea, sdArea):
     polygon = Polygon(polys)
     area = polygon.area
-    if area > 2500:
+    if area > 10000:
         return False
     else:
         return True

@@ -73,37 +73,25 @@ print("Processing image")
 # Furthermore, the numeric values are converted from strings (the GUI output)
 # into integers.  The third argument controls the mu calculation during
 # intensity normalisation.
-
+filenames = ["PrewoundL18h10"]
 
 for filename in filenames:
     print("-----------------------------------------------------------")
     print(f"{filename}")
     print("-----------------------------------------------------------")
     print("")
-    path_to_file = f"datProcessing/{filename}/migration{filename}.tif"
+
+    path_to_file = f"datProcessing/{filename}/binary{filename}.tif"
     if False == exists(path_to_file):
-        functions.process_stack(
-            ij,
-            filename,
-        )
+        print("Collecting binary images")
+        functions.getBinary(filename)
 
-    path_to_file = f"datProcessing/dat_pred/{filename}/div10{filename}.tif"
+    path_to_file = f"datProcessing/{filename}/shape{filename}.pkl"
     if False == exists(path_to_file):
-        functions.deepLearningDiv(filename)
+        print("Calculating cell shapes")
+        functions.calShape(filename)
 
-    path_to_file = f"datProcessing/dat_pred/{filename}/ecadBlur3{filename}.tif"
+    path_to_file = f"datProcessing/{filename}/vidStackH2{filename}.pkl"
     if False == exists(path_to_file):
-        functions.deepLearningEcad(filename)
-
-    path_to_file = f"datProcessing/{filename}/migration{filename}.xml"
-    if False == exists(path_to_file):
-        functions.trackMate(filename)
-
-    path_to_file = f"datProcessing/{filename}/nucleusVelocity{filename}.pkl"
-    if False == exists(path_to_file):
-        print("Make Velocity Database")
-        functions.nucleusVelocity(filename)
-
-
-# At this point the analysis is complete
-print("Complete")
+        print("Calculating dividing nuclei shapes")
+        functions.nucleusShape(ij, filename, nucleusClassifer_path)

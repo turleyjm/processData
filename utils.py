@@ -27,11 +27,16 @@ plt.rcParams.update({"font.size": 20})
 
 # -------------------
 
-fileType = "Unwound18h13"
-# fileType = "WoundL"
-# fileType = "WoundS"
-# fileType = "Wound"
-# fileType = "All"
+# fileType = "Unwound18h"
+# fileType = "WoundL18h"
+# fileType = "WoundS18h"
+# fileType = "UnwoundCa"
+# fileType = "WoundLCa"
+# fileType = "WoundSCa"
+# fileType = "UnwoundJNK"
+# fileType = "WoundLJNK"
+# fileType = "WoundSJNK"
+fileType = "All"
 
 
 def getFilesType(fileType=fileType):
@@ -53,6 +58,12 @@ def getFilesType(fileType=fileType):
             filenames.remove("dat_pred")
         if "confocalRawLocation.txt" in filenames:
             filenames.remove("confocalRawLocation.txt")
+        if "confocalRawLocationCa.txt" in filenames:
+            filenames.remove("confocalRawLocationCa.txt")
+        if "confocalRawLocationJNK.txt" in filenames:
+            filenames.remove("confocalRawLocationJNK.txt")
+        if "confocalRawLocation_rpr.txt" in filenames:
+            filenames.remove("confocalRawLocation_rpr.txt")
 
     else:
         cwd = os.getcwd()

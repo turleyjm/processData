@@ -2,6 +2,7 @@ import numpy as np
 import os
 from os.path import exists
 from numpy.core.numeric import False_
+from PIL import Image
 import scyjava as sj
 import scipy
 from scipy import ndimage
@@ -11,7 +12,7 @@ import tifffile
 from datetime import datetime
 import shutil
 from shapely.geometry import Polygon
-import utils as cl
+import utils as util
 import cellProperties as cell
 import pandas as pd
 from collections import Counter
@@ -21,6 +22,8 @@ import xml.etree.ElementTree as et
 ### IMPORTS ###
 import configparser
 from pathlib import Path
+
+scale = 123.26 / 512
 
 
 def current_time():
@@ -75,9 +78,10 @@ def process_stack(ij, filename):
     ecad = heightFilter(stack[:, :, 0], surface, 10)
     h2 = heightFilter(stack[:, :, 1], surface, 15)
 
-    if False:
+    if True:
         ecad = np.asarray(ecad, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/ecadHeight{filename}.tif", ecad)
+    if False:
         h2 = np.asarray(h2, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/h2Height{filename}.tif", h2)
 
@@ -187,7 +191,7 @@ def weka(
             )
             split = int(T / framesMax - startPoint)
         else:
-            cl.createFolder(f"datProcessing/{filename}/_{name}{filename}")
+            util.createFolder(f"datProcessing/{filename}/_{name}{filename}")
             stackprob = np.zeros([T, X, Y])
 
             split = int(T / framesMax - 1)
@@ -436,28 +440,22 @@ def get_outPlane_macro(filepath):
     )
 
 
-def outPlane(ij, filename):
+def outPlane(filename):
 
-    filepath = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/woundProb{filename}.tif"
+    outPlane = sm.io.imread(f"datProcessing/{filename}/_outPlane{filename}.tif").astype(
+        int
+    )
 
-    outPlaneMacro = get_outPlane_macro(filepath)
-    ij.script().run("macro.ijm", outPlaneMacro, True).get()
+    outPlane = ndimage.median_filter(outPlane, footprint=np.ones((10, 10, 10)))
 
-    outPlaneBinary_ij2 = ij.py.active_dataset()
-    outPlaneBinary = ij.py.from_java(outPlaneBinary_ij2)
-    outPlaneBinary = 255 - np.asarray(outPlaneBinary, "uint8")
+    tifffile.imwrite(f"image/image.tif", outPlane)
+    image = Image.open(f"image/image.tif")
+    outPlane = image.resize((512, 512))
+    outPlane = outPlane[outPlane > 128] = 255
+    outPlane = outPlane[outPlane <= 128] = 0
 
-    (T, X, Y) = outPlaneBinary.shape
-    for t in range(T):
-        imgLabel = sm.measure.label(outPlaneBinary[t], background=0, connectivity=1)
-        imgLabels = np.unique(imgLabel)[1:]
-        for label in imgLabels:
-            area = np.sum(imgLabel == label)
-            if area < 50:
-                outPlaneBinary[t][imgLabel == label] = 0
-
-    outPlaneBinary = np.asarray(outPlaneBinary, "uint8")
-    tifffile.imwrite(f"datProcessing/{filename}/outPlane{filename}.tif", outPlaneBinary)
+    outPlane = np.asarray(outPlane, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/outPlane{filename}.tif", outPlane)
 
 
 def woundsite(filename):
@@ -479,7 +477,7 @@ def woundsite(filename):
     vidLabelsrc = []
     for t in range(T):
         img = sm.measure.label(wound[t], background=0, connectivity=1)
-        imgxy = cl.imgrcxy(img)
+        imgxy = util.imgrcxy(img)
         vidLabelsrc.append(img)
         vidLabels.append(imgxy)
 
@@ -603,7 +601,7 @@ def woundsite(filename):
 
     dist = []
     for t in range(T):
-        img = 255 - cl.imgrcxy(wound[t])
+        img = 255 - util.imgrcxy(wound[t])
         dist.append(sp.ndimage.morphology.distance_transform_edt(img))
 
     dist = np.asarray(dist, "uint16")
@@ -742,49 +740,15 @@ def angle(filename):
         tifffile.imwrite(f"datProcessing/{filename}/angle{filename}.tif", angle)
 
 
-def deepLearningOld(filename):
+def deepLearningDiv(filename):
 
-    print("Deep Learning Input")
+    print("Division Deep Learning Input")
 
-    focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
-
-    ecadFocus = focus[:, :, :, 1]
-    h2Focus = focus[:, :, :, 0]
-
-    (T, Y, X) = ecadFocus.shape
-
-    input3h = np.zeros([T - 2, 512, 512, 3])
-    input1e2h = np.zeros([T - 2, 512, 512, 3])
-
-    for t in range(T - 2):
-        input1e2h[t, :, :, 0] = h2Focus[t]
-        input1e2h[t, :, :, 1] = ecadFocus[t]
-        input1e2h[t, :, :, 2] = h2Focus[t + 1]
-
-        input3h[t, :, :, 0] = h2Focus[t]
-        input3h[t, :, :, 1] = h2Focus[t + 1]
-        input3h[t, :, :, 2] = h2Focus[t + 2]
-
-    input1e2h = np.asarray(input1e2h, "uint8")
-    tifffile.imwrite(f"datProcessing/uploadDL/input1e2h{filename}.tif", input1e2h)
-    input3h = np.asarray(input3h, "uint8")
-    tifffile.imwrite(f"datProcessing/uploadDL/input3h{filename}.tif", input3h)
-    focus = np.asarray(focus, "uint8")
-    tifffile.imwrite(f"datProcessing/uploadDL/focus{filename}.tif", input3h)
-
-
-def deepLearning(filename):
-
-    print("Deep Learning Input")
-
-    cl.createFolder(f"datProcessing/dat_pred/{filename}")
+    util.createFolder(f"datProcessing/dat_pred/{filename}")
 
     focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
     focus = np.asarray(focus, "uint8")
-    tifffile.imwrite(
-        f"datProcessing/dat_pred/{filename}/focus{filename}.tif",
-        focus,
-    )
+    tifffile.imwrite(f"datProcessing/dat_pred/{filename}/focus{filename}.tif", focus)
 
     ecadFocus = focus[:, :, :, 1]
     h2Focus = focus[:, :, :, 0]
@@ -798,46 +762,112 @@ def deepLearning(filename):
         inputVid[:, 1 + 2 * i] = h2Focus[i : T - 4 + i]
 
     inputVid = np.asarray(inputVid, "uint8")
-    for t in range(T - 4):
-        tifffile.imwrite(
-            f"datProcessing/dat_pred/{filename}/{filename}_{t}.tif",
-            inputVid[t],
-        )
-
-
-def deepLearning3(filename):
-
-    print("Deep Learning Input")
-
-    cl.createFolder(f"datProcessing/dat_pred/{filename}")
-
-    focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
-    focus = np.asarray(focus, "uint8")
     tifffile.imwrite(
-        f"datProcessing/dat_pred/{filename}/focus{filename}.tif",
-        focus,
+        f"datProcessing/dat_pred/{filename}/div10{filename}.tif",
+        inputVid,
+        imagej=True,
+        metadata={"axes": "TZYX"},
     )
 
-    ecadFocus = focus[:, :, :, 1]
-    h2Focus = focus[:, :, :, 0]
 
-    (T, Y, X) = ecadFocus.shape
+def deepLearningEcad(filename):
 
-    inputVid = np.zeros([T - 4, 3, 512, 512])
+    print("E-cadherin Deep Learning Input")
 
-    for i in range(3):
-        inputVid[:, i] = h2Focus[i + 1 : T - 3 + i]
+    util.createFolder(f"datProcessing/dat_pred/{filename}")
+
+    vid = sm.io.imread(f"datProcessing/{filename}/ecadHeight{filename}.tif").astype(int)
+    T = vid.shape[0]
+    seg = np.zeros([T, 512, 512, 3])
+    seg[:, :, :, 0], seg[:, :, :, 1], seg[:, :, :, 2] = blurFocusStack(vid, 7)
+    inputVid = np.zeros([T, 1024, 1024, 3])
+    util.createFolder("image/")
+    for t in range(T):
+        image = seg[t]
+        image = np.asarray(image, "uint8")
+        tifffile.imwrite(f"image/image.tif", image)
+        image = Image.open(f"image/image.tif")
+        image = image.resize((1024, 1024))
+        image = np.asarray(image, "uint8")
+        inputVid[t] = image
+
+    shutil.rmtree("image/")
 
     inputVid = np.asarray(inputVid, "uint8")
-    for t in range(T - 4):
-        tifffile.imwrite(
-            f"datProcessing/dat_pred/{filename}/{filename}_{t}.tif",
-            inputVid[t],
-            imagej=True,
-        )
+    tifffile.imwrite(
+        f"datProcessing/dat_pred/{filename}/ecadBlur3{filename}.tif",
+        inputVid,
+    )
 
 
-def trackMate(filename):
+def blurFocusStack(vid, focusRange):
+
+    vid = vid.astype("uint16")
+    (T, Z, Y, X) = vid.shape
+    variance = np.zeros([T, Z, Y, X])
+    varianceMax = np.zeros([T, Y, X])
+    surface = np.zeros([T, Y, X])
+    focus = np.zeros([T, Y, X])
+    focusDown = np.zeros([T, Y, X])
+    focusUp = np.zeros([T, Y, X])
+
+    for t in range(T):
+        for z in range(Z):
+            winMean = ndimage.uniform_filter(vid[t, z], (focusRange, focusRange))
+            winSqrMean = ndimage.uniform_filter(
+                vid[t, z] ** 2, (focusRange, focusRange)
+            )
+            variance[t, z] = winSqrMean - winMean ** 2
+
+    varianceMax = np.max(variance, axis=1)
+
+    for z in range(Z):
+        surface[variance[:, z] == varianceMax] = z
+
+    for z in range(Z):
+        focus[surface == z] = vid[:, z][surface == z]
+
+    for z in range(Z - 1):
+        focusUp[surface == z] = vid[:, z + 1][surface == z]
+    focusUp[surface == z + 1] = vid[:, z + 1][surface == z + 1]
+
+    focusDown[surface == 0] = vid[:, 0][surface == 0]
+    for z in range(1, Z):
+        focusDown[surface == z] = vid[:, z - 1][surface == z]
+
+    focusUp = focusUp.astype("uint8")
+    focus = focus.astype("uint8")
+    focusDown = focusDown.astype("uint8")
+
+    focusUp, focus, focusDown = normaliseBlur(focusUp, focus, focusDown, 60)
+
+    return focusUp, focus, focusDown
+
+
+def normaliseBlur(focusUp, focus, focusDown, mu0):
+    focus = focus.astype("float")
+    (T, X, Y) = focus.shape
+
+    for t in range(T):
+        mu = focus[t, 50:450, 50:450][focus[t, 50:450, 50:450] > 0]
+
+        mu = np.quantile(mu, 0.5)
+
+        ratio = mu0 / mu
+
+        focus[t] = focus[t] * ratio
+        focus[t][focus[t] > 255] = 255
+
+        focusUp[t] = focusUp[t] * ratio
+        focusUp[t][focusUp[t] > 255] = 255
+
+        focusDown[t] = focusDown[t] * ratio
+        focusDown[t][focusDown[t] > 255] = 255
+
+    return focusUp.astype("uint8"), focus.astype("uint8"), focusDown.astype("uint8")
+
+
+def trackMate(filename, file="migration", r=9.000, thres=10, gap=12):
 
     ### MAIN PROCESSING STEPS ###
     print("TrackMate")
@@ -885,7 +915,7 @@ def trackMate(filename):
     #################### Change these settings based on trackmate parameters #####################################
     settings.detectorSettings = {
         "DO_SUBPIXEL_LOCALIZATION": True,
-        "RADIUS": 9.000,
+        "RADIUS": r,
         "TARGET_CHANNEL": 1,
         "THRESHOLD": 10.000,
         "DO_MEDIAN_FILTERING": False,
@@ -894,7 +924,7 @@ def trackMate(filename):
     settings.trackerFactory = SparseLAP()
     settings.trackerSettings = LAPUtils.getDefaultLAPSettingsMap()
     settings.trackerSettings["LINKING_MAX_DISTANCE"] = 12.0
-    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = 12.0
+    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = gap
     # Add ALL the feature analyzers known to TrackMate, via
     # providers.
     # They offer automatic analyzer detection, so all the
@@ -1152,14 +1182,14 @@ def nucleusVelocity(filename):
 
 def saveForSeg(filename):
 
-    vid = sm.io.imread(f"datProcessing/{filename}/ecadProb{filename}.tif").astype(int)
+    vid = sm.io.imread(f"datProcessing/{filename}/probEcad{filename}.tif").astype(int)
     if "Wound" in filename:
         dist = sm.io.imread(f"datProcessing/{filename}/distance{filename}.tif").astype(
             int
         )
         vid[dist == 0] = 0
 
-    cl.createFolder(f"datProcessing/{filename}/imagesForSeg")
+    util.createFolder(f"datProcessing/{filename}/imagesForSeg")
     for t in range(len(vid)):
         if t > 99:
             T = f"{t}"
@@ -1181,6 +1211,7 @@ def getBinary(filename):
 
     binary_vid = []
     track_vid = []
+    T1_vid = []
 
     for frame in range(T):
 
@@ -1202,11 +1233,17 @@ def getBinary(filename):
         img = sm.io.imread(foldername + "/tracked_cells_resized.tif").astype(float)
         track_vid.append(img)
 
+        img = sm.io.imread(foldername + "/T1s.tif").astype(float)
+        T1_vid.append(img)
+
     data = np.asarray(binary_vid, "uint8")
     tifffile.imwrite(f"datProcessing/{filename}/binary{filename}.tif", data)
 
     data = np.asarray(track_vid, "uint8")
     tifffile.imwrite(f"datProcessing/{filename}/binaryTracks{filename}.tif", data)
+
+    data = np.asarray(T1_vid, "uint8")
+    tifffile.imwrite(f"datProcessing/{filename}/T1{filename}.tif", data)
 
 
 def calShape(filename):
@@ -1219,7 +1256,7 @@ def calShape(filename):
 
         img = binary[t]
         img = 255 - img
-        imgxy = cl.imgrcxy(img)
+        imgxy = util.imgrcxy(img)
 
         # find and labels cells
 
@@ -1236,7 +1273,7 @@ def calShape(filename):
             allContours.append(contour)
             allPolys.append(poly)
 
-        allPolys, allContours = cl.removeCells(allPolys, allContours)
+        allPolys, allContours = util.removeCells(allPolys, allContours)
 
         # quantifly polygon properties and saves them
         for i in range(len(allPolys)):
@@ -1261,3 +1298,203 @@ def calShape(filename):
 
     dfShape = pd.DataFrame(_dfShape)
     dfShape.to_pickle(f"datProcessing/{filename}/shape{filename}.pkl")
+
+
+def nucleusShape(ij, filename, model_path):
+    dfDivision = pd.read_pickle(f"datProcessing/{filename}/dfDivision{filename}.pkl")
+
+    df = dfDivision[dfDivision["T"] > 10]
+    df = df[df["X"] > 20]
+    df = df[df["Y"] > 20]
+    df = df[df["X"] < 492]
+    df = df[df["Y"] < 492]
+
+    if len(df) > 0:
+
+        h2Stack = sm.io.imread(f"datProcessing/{filename}/{filename}.tif").astype(int)[
+            :, :, 1
+        ]
+        h2 = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)[
+            :, :, :, 0
+        ]
+        T, Z, X, Y = h2Stack.shape
+        n = len(df)
+        vidStackAll = np.zeros([11 * n, Z, 60, 60])
+        vidAll = np.zeros([11 * n, 60, 60])
+
+        for i in range(n):
+            x = df["X"].iloc[i]
+            y = 512 - df["Y"].iloc[i]
+            t = int(df["T"].iloc[i])
+
+            xMax = int(x + 30)
+            xMin = int(x - 30)
+            yMax = int(y + 30)
+            yMin = int(y - 30)
+            if xMax > 512:
+                xMaxCrop = 60 - (xMax - 512)
+                xMax = 512
+            else:
+                xMaxCrop = 60
+            if xMin < 0:
+                xMinCrop = -xMin
+                xMin = 0
+            else:
+                xMinCrop = 0
+            if yMax > 512:
+                yMaxCrop = 60 - (yMax - 512)
+                yMax = 512
+            else:
+                yMaxCrop = 60
+            if yMin < 0:
+                yMinCrop = -yMin
+                yMin = 0
+            else:
+                yMinCrop = 0
+
+            vidStack = np.zeros([10, Z, 60, 60])
+            vid = np.zeros([10, 60, 60])
+            for j in range(10):
+
+                vidAll[11 * i + j, yMinCrop:yMaxCrop, xMinCrop:xMaxCrop] = h2[
+                    t - 9 + j, yMin:yMax, xMin:xMax
+                ]
+                vidStackAll[
+                    11 * i + j, :, yMinCrop:yMaxCrop, xMinCrop:xMaxCrop
+                ] = h2Stack[t - 9 + j, :, yMin:yMax, xMin:xMax]
+
+        vidAll = np.asarray(vidAll, "uint8")
+        tifffile.imwrite(
+            f"datProcessing/{filename}/vidH2{filename}.tif",
+            vidAll,
+            imagej=True,
+            metadata={"axes": "TYX"},
+        )
+
+        vidStackAll = np.asarray(vidStackAll, "uint8")
+        tifffile.imwrite(
+            f"datProcessing/{filename}/vidStackH2{filename}.tif",
+            vidStackAll,
+            imagej=True,
+            metadata={"axes": "TZYX"},
+        )
+
+        trackMate(filename, file="vidStackH2", r=10.5, thres=1, gap=0)
+
+        stackProb = wekaNS(
+            ij,
+            filename,
+            model_path,
+        )
+        stackProb = np.asarray(stackProb, "uint8")
+        tifffile.imwrite(
+            f"datProcessing/{filename}/nucleusProb{filename}.tif",
+            stackProb,
+            imagej=True,
+            metadata={"axes": "TYX"},
+        )
+
+        stackProb[stackProb < 0.3] = 0
+        stackProb[stackProb >= 0.3] = 255
+        stackProb = np.asarray(stackProb, "uint8")
+        tifffile.imwrite(
+            f"datProcessing/{filename}/nucleusBinary{filename}.tif",
+            stackProb,
+            imagej=True,
+            metadata={"axes": "TYX"},
+        )
+
+        dfNuclei = trackmate_vertices_import(
+            f"dat/{filename}/divisionNucleiTracks{filename}.xml", get_tracks=True
+        )
+        dfDivision = pd.read_pickle(f"dat/{filename}/dfDivision{filename}.pkl")
+        df = dfDivision[dfDivision["T"] > 10]
+        df = df[df["X"] > 20]
+        df = df[df["Y"] > 20]
+        df = df[df["X"] < 492]
+        df = df[df["Y"] < 492]
+        n = len(df)
+
+        _df = []
+
+        for i in range(n):
+            dft = dfNuclei[dfNuclei["t"] == i * 11 + 9]
+            dft["R"] = 0
+            dft["R"] = ((30 - dft["x"]) ** 2 + (30 - dft["y"]) ** 2) ** 0.5
+
+            dfR = dft[dft["R"] < 12]
+            label = dfR["label"][dfR["z"] == np.min(dfR["z"])].iloc[0]
+
+            df2 = dfNuclei[dfNuclei["label"] == label]
+
+            if len(df2) == 10:
+                for j in range(10):
+                    img = stackProb[i * 11 + j]
+                    img = sp.ndimage.binary_fill_holes(img).astype(int) * 255
+                    # img = np.asarray(img, "uint8")
+                    # tifffile.imwrite(
+                    #     f"dat/Unwound18h13/image/img.tif",
+                    #     img,
+                    # )
+                    imgLabel = sm.measure.label(img, background=0, connectivity=1)
+                    imgLabel = np.asarray(imgLabel, "uint8")
+                    # tifffile.imwrite(
+                    #     f"dat/Unwound18h13/image/imgLabel.tif",
+                    #     imgLabel,
+                    # )
+                    x, y = df2["x"].iloc[j], df2["y"].iloc[j]
+                    shapeLabel = imgLabel[int(y), int(x)]
+                    if shapeLabel != 0:
+                        # convert to row-col
+                        imgLabel = util.imgrcxy(imgLabel)
+                        contour = sm.measure.find_contours(
+                            imgLabel == shapeLabel, level=0
+                        )[0]
+                        poly = sm.measure.approximate_polygon(contour, tolerance=1)
+                        try:
+                            polygon = Polygon(poly)
+                            if j == 9:
+                                a = 0
+                            _df.append(
+                                {
+                                    "Filename": filename,
+                                    "Div Label": df["Label"].iloc[i],
+                                    "Div Orientation": df["Orientation"].iloc[i] % 180,
+                                    "Track Label": label,
+                                    "X": x,
+                                    "Y": y,
+                                    "Z": df2["z"].iloc[j],
+                                    "T": df2["t"].iloc[j],
+                                    "Polygon": polygon,
+                                    "Area": cell.area(polygon) * scale ** 2,
+                                    "Shape Orientation": (
+                                        cell.orientation(polygon) * 180 / np.pi - 90
+                                    )
+                                    % 180,
+                                    "Shape Factor": cell.shapeFactor(polygon),
+                                    "q": cell.qTensor(polygon),
+                                    "Time Before Division": j - 10,
+                                }
+                            )
+                        except:
+                            print(i * 11 + j)
+                            continue
+
+        dfDivNucleus = pd.DataFrame(_df)
+
+        dfDivNucleus.to_pickle(f"dat/{filename}/dfDivNucleus{filename}.pkl")
+
+
+def wekaNS(
+    ij,
+    filename,
+    model_path,
+):
+
+    weka = sj.jimport("trainableSegmentation.WekaSegmentation")()
+    weka.loadClassifier(model_path)
+    stack = sm.io.imread(f"datProcessing/{filename}/vidH2{filename}.tif").astype(int)
+    stack_ij2 = ij.py.to_dataset(stack)
+    stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
+
+    return ij.py.from_java(stackprob_ij2).values

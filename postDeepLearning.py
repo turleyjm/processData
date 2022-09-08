@@ -7,15 +7,29 @@ import functions
 from os.path import exists
 
 from pathlib import Path
-import utils as cl
+import utils as util
 
-filenames, fileType = cl.getFilesType()
+filenames, fileType = util.getFilesType()
+
+### MAIN PROCESSING STEPS ###
+print("Processing image")
+
+# Most of the arguments for this are being read from the GUI object (named "g").
+# Furthermore, the numeric values are converted from strings (the GUI output)
+# into integers.  The third argument controls the mu calculation during
+# intensity normalisation.
+filenames = ["PrewoundL18h10"]
 
 for filename in filenames:
     print("-----------------------------------------------------------")
     print(f"{filename}")
     print("-----------------------------------------------------------")
     print("")
+
+    path_to_file = f"datProcessing/{filename}/outPlane{filename}.tif"
+    if False == exists(path_to_file):
+        print("Out of Plane Zones")
+        functions.outPlane(filename)
 
     if "Wound" in filename:
         path_to_file = f"datProcessing/{filename}/woundsite{filename}.pkl"

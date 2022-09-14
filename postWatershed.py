@@ -73,7 +73,6 @@ print("Processing image")
 # Furthermore, the numeric values are converted from strings (the GUI output)
 # into integers.  The third argument controls the mu calculation during
 # intensity normalisation.
-filenames = ["PrewoundL18h10"]
 
 for filename in filenames:
     print("-----------------------------------------------------------")
@@ -91,7 +90,7 @@ for filename in filenames:
         print("Calculating cell shapes")
         functions.calShape(filename)
 
-    path_to_file = f"datProcessing/{filename}/vidStackH2{filename}.pkl"
+    path_to_file = f"datProcessing/{filename}/dfDivNucleus{filename}.pkl"
     if False == exists(path_to_file):
         print("Calculating dividing nuclei shapes")
         functions.nucleusShape(ij, filename, nucleusClassifer_path)

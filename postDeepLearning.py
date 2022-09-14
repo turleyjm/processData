@@ -18,7 +18,6 @@ print("Processing image")
 # Furthermore, the numeric values are converted from strings (the GUI output)
 # into integers.  The third argument controls the mu calculation during
 # intensity normalisation.
-filenames = ["PrewoundL18h10"]
 
 for filename in filenames:
     print("-----------------------------------------------------------")
@@ -37,12 +36,12 @@ for filename in filenames:
             print("Make Wound Database")
             functions.woundsite(filename)
     else:
-        path_to_file = f"datProcessing/{filename}/distance{filename}.pkl"
+        path_to_file = f"datProcessing/{filename}/distance{filename}.tif"
         if False == exists(path_to_file):
             print("Make Distance")
             functions.distance(filename)
 
-    path_to_file = f"datProcessing/{filename}/angle{filename}.pkl"
+    path_to_file = f"datProcessing/{filename}/angle{filename}.tif"
     if False == exists(path_to_file):
         print("Make Angle")
         functions.angle(filename)

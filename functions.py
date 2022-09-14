@@ -448,12 +448,6 @@ def outPlane(filename):
 
     outPlane = ndimage.median_filter(outPlane, footprint=np.ones((10, 10, 10)))
 
-    tifffile.imwrite(f"image/image.tif", outPlane)
-    image = Image.open(f"image/image.tif")
-    outPlane = image.resize((512, 512))
-    outPlane = outPlane[outPlane > 128] = 255
-    outPlane = outPlane[outPlane <= 128] = 0
-
     outPlane = np.asarray(outPlane, "uint8")
     tifffile.imwrite(f"datProcessing/{filename}/outPlane{filename}.tif", outPlane)
 
@@ -867,7 +861,7 @@ def normaliseBlur(focusUp, focus, focusDown, mu0):
     return focusUp.astype("uint8"), focus.astype("uint8"), focusDown.astype("uint8")
 
 
-def trackMate(filename, file="migration", r=9.000, thres=10, gap=12):
+def trackMate(filename, fileType="migration", r=9, thres=10.000, gap=12.000):
 
     ### MAIN PROCESSING STEPS ###
     print("TrackMate")
@@ -902,7 +896,7 @@ def trackMate(filename, file="migration", r=9.000, thres=10, gap=12):
     FeatureFilter = sj.jimport("fiji.plugin.trackmate.features.FeatureFilter")
     ImagePlus = sj.jimport("ij.ImagePlus")
 
-    stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/migration{filename}.tif"
+    stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{fileType}{filename}.tif"
     xmlPath = (stack_path.rsplit(".tif"))[0]
     newXML = open(xmlPath + ".xml", "w")
 
@@ -917,13 +911,13 @@ def trackMate(filename, file="migration", r=9.000, thres=10, gap=12):
         "DO_SUBPIXEL_LOCALIZATION": True,
         "RADIUS": r,
         "TARGET_CHANNEL": 1,
-        "THRESHOLD": 10.000,
+        "THRESHOLD": thres,
         "DO_MEDIAN_FILTERING": False,
     }
     # Configure tracker
     settings.trackerFactory = SparseLAP()
     settings.trackerSettings = LAPUtils.getDefaultLAPSettingsMap()
-    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 12.0
+    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 12.000
     settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = gap
     # Add ALL the feature analyzers known to TrackMate, via
     # providers.
@@ -1379,7 +1373,7 @@ def nucleusShape(ij, filename, model_path):
             metadata={"axes": "TZYX"},
         )
 
-        trackMate(filename, file="vidStackH2", r=10.5, thres=1, gap=0)
+        trackMateDiv(filename)
 
         stackProb = wekaNS(
             ij,
@@ -1394,8 +1388,8 @@ def nucleusShape(ij, filename, model_path):
             metadata={"axes": "TYX"},
         )
 
-        stackProb[stackProb < 0.3] = 0
-        stackProb[stackProb >= 0.3] = 255
+        stackProb[stackProb < 0.3 * 255] = 0
+        stackProb[stackProb >= 0.3 * 255] = 255
         stackProb = np.asarray(stackProb, "uint8")
         tifffile.imwrite(
             f"datProcessing/{filename}/nucleusBinary{filename}.tif",
@@ -1405,9 +1399,12 @@ def nucleusShape(ij, filename, model_path):
         )
 
         dfNuclei = trackmate_vertices_import(
-            f"dat/{filename}/divisionNucleiTracks{filename}.xml", get_tracks=True
+            f"datProcessing/{filename}/divisionNucleiTracks{filename}.xml",
+            get_tracks=True,
         )
-        dfDivision = pd.read_pickle(f"dat/{filename}/dfDivision{filename}.pkl")
+        dfDivision = pd.read_pickle(
+            f"datProcessing/{filename}/dfDivision{filename}.pkl"
+        )
         df = dfDivision[dfDivision["T"] > 10]
         df = df[df["X"] > 20]
         df = df[df["Y"] > 20]
@@ -1423,66 +1420,68 @@ def nucleusShape(ij, filename, model_path):
             dft["R"] = ((30 - dft["x"]) ** 2 + (30 - dft["y"]) ** 2) ** 0.5
 
             dfR = dft[dft["R"] < 12]
-            label = dfR["label"][dfR["z"] == np.min(dfR["z"])].iloc[0]
+            if len(dfR) > 0:
+                label = dfR["label"][dfR["z"] == np.min(dfR["z"])].iloc[0]
 
-            df2 = dfNuclei[dfNuclei["label"] == label]
+                df2 = dfNuclei[dfNuclei["label"] == label]
 
-            if len(df2) == 10:
-                for j in range(10):
-                    img = stackProb[i * 11 + j]
-                    img = sp.ndimage.binary_fill_holes(img).astype(int) * 255
-                    # img = np.asarray(img, "uint8")
-                    # tifffile.imwrite(
-                    #     f"dat/Unwound18h13/image/img.tif",
-                    #     img,
-                    # )
-                    imgLabel = sm.measure.label(img, background=0, connectivity=1)
-                    imgLabel = np.asarray(imgLabel, "uint8")
-                    # tifffile.imwrite(
-                    #     f"dat/Unwound18h13/image/imgLabel.tif",
-                    #     imgLabel,
-                    # )
-                    x, y = df2["x"].iloc[j], df2["y"].iloc[j]
-                    shapeLabel = imgLabel[int(y), int(x)]
-                    if shapeLabel != 0:
-                        # convert to row-col
-                        imgLabel = util.imgrcxy(imgLabel)
-                        contour = sm.measure.find_contours(
-                            imgLabel == shapeLabel, level=0
-                        )[0]
-                        poly = sm.measure.approximate_polygon(contour, tolerance=1)
-                        try:
-                            polygon = Polygon(poly)
-                            if j == 9:
-                                a = 0
-                            _df.append(
-                                {
-                                    "Filename": filename,
-                                    "Div Label": df["Label"].iloc[i],
-                                    "Div Orientation": df["Orientation"].iloc[i] % 180,
-                                    "Track Label": label,
-                                    "X": x,
-                                    "Y": y,
-                                    "Z": df2["z"].iloc[j],
-                                    "T": df2["t"].iloc[j],
-                                    "Polygon": polygon,
-                                    "Area": cell.area(polygon) * scale ** 2,
-                                    "Shape Orientation": (
-                                        cell.orientation(polygon) * 180 / np.pi - 90
-                                    )
-                                    % 180,
-                                    "Shape Factor": cell.shapeFactor(polygon),
-                                    "q": cell.qTensor(polygon),
-                                    "Time Before Division": j - 10,
-                                }
-                            )
-                        except:
-                            print(i * 11 + j)
-                            continue
+                if len(df2) == 10:
+                    for j in range(10):
+                        img = stackProb[i * 11 + j]
+                        img = sp.ndimage.binary_fill_holes(img).astype(int) * 255
+                        # img = np.asarray(img, "uint8")
+                        # tifffile.imwrite(
+                        #     f"dat/Unwound18h13/image/img.tif",
+                        #     img,
+                        # )
+                        imgLabel = sm.measure.label(img, background=0, connectivity=1)
+                        imgLabel = np.asarray(imgLabel, "uint8")
+                        # tifffile.imwrite(
+                        #     f"dat/Unwound18h13/image/imgLabel.tif",
+                        #     imgLabel,
+                        # )
+                        x, y = df2["x"].iloc[j], df2["y"].iloc[j]
+                        shapeLabel = imgLabel[int(y), int(x)]
+                        if shapeLabel != 0:
+                            # convert to row-col
+                            imgLabel = util.imgrcxy(imgLabel)
+                            contour = sm.measure.find_contours(
+                                imgLabel == shapeLabel, level=0
+                            )[0]
+                            poly = sm.measure.approximate_polygon(contour, tolerance=1)
+                            try:
+                                polygon = Polygon(poly)
+                                if j == 9:
+                                    a = 0
+                                _df.append(
+                                    {
+                                        "Filename": filename,
+                                        "Div Label": df["Label"].iloc[i],
+                                        "Div Orientation": df["Orientation"].iloc[i]
+                                        % 180,
+                                        "Track Label": label,
+                                        "X": x,
+                                        "Y": y,
+                                        "Z": df2["z"].iloc[j],
+                                        "T": df2["t"].iloc[j],
+                                        "Polygon": polygon,
+                                        "Area": cell.area(polygon) * scale ** 2,
+                                        "Shape Orientation": (
+                                            cell.orientation(polygon) * 180 / np.pi - 90
+                                        )
+                                        % 180,
+                                        "Shape Factor": cell.shapeFactor(polygon),
+                                        "q": cell.qTensor(polygon),
+                                        "Time Before Division": j - 10,
+                                    }
+                                )
+                            except:
+                                print(i * 11 + j)
+                                continue
 
         dfDivNucleus = pd.DataFrame(_df)
 
-        dfDivNucleus.to_pickle(f"dat/{filename}/dfDivNucleus{filename}.pkl")
+        dfDivNucleus.to_pickle(f"datProcessing/{filename}/dfDivNucleus{filename}.pkl")
 
 
 def wekaNS(
@@ -1498,3 +1497,95 @@ def wekaNS(
     stackprob_ij2 = apply_weka(ij, weka, stack_ij2)
 
     return ij.py.from_java(stackprob_ij2).values
+
+
+def trackMateDiv(filename):
+
+    ### MAIN PROCESSING STEPS ###
+    print("TrackMate")
+
+    HyperStackDisplayer = sj.jimport(
+        "fiji.plugin.trackmate.visualization.hyperstack.HyperStackDisplayer"
+    )
+    TmXmlReader = sj.jimport("fiji.plugin.trackmate.io.TmXmlReader")
+    TmXmlWriter = sj.jimport("fiji.plugin.trackmate.io.TmXmlWriter")
+    Logger = sj.jimport("fiji.plugin.trackmate.Logger")
+    Settings = sj.jimport("fiji.plugin.trackmate.Settings")
+    SelectionModel = sj.jimport("fiji.plugin.trackmate.SelectionModel")
+    DetectorProvider = sj.jimport("fiji.plugin.trackmate.providers.DetectorProvider")
+    TrackerProvider = sj.jimport("fiji.plugin.trackmate.providers.TrackerProvider")
+    SpotAnalyzerProvider = sj.jimport(
+        "fiji.plugin.trackmate.providers.SpotAnalyzerProvider"
+    )
+    EdgeAnalyzerProvider = sj.jimport(
+        "fiji.plugin.trackmate.providers.EdgeAnalyzerProvider"
+    )
+    TrackAnalyzerProvider = sj.jimport(
+        "fiji.plugin.trackmate.providers.TrackAnalyzerProvider"
+    )
+    jfile = sj.jimport("java.io.File")
+    Model = sj.jimport("fiji.plugin.trackmate.Model")
+    Trackmate = sj.jimport("fiji.plugin.trackmate.TrackMate")
+    Factory = sj.jimport("fiji.plugin.trackmate.detection.LogDetectorFactory")
+    LAPUtils = sj.jimport("fiji.plugin.trackmate.tracking.LAPUtils")
+    SparseLAP = sj.jimport(
+        "fiji.plugin.trackmate.tracking.sparselap.SimpleSparseLAPTrackerFactory"
+    )
+    FeatureFilter = sj.jimport("fiji.plugin.trackmate.features.FeatureFilter")
+    ImagePlus = sj.jimport("ij.ImagePlus")
+
+    stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/vidStackH2{filename}.tif"
+    xmlPath = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/divisionNucleiTracks{filename}"
+    newXML = open(xmlPath + ".xml", "w")
+
+    imp = ImagePlus(stack_path)
+    model = Model()
+    model.setLogger(Logger.IJ_LOGGER)
+    settings = Settings()
+    settings.setFrom(imp)
+    settings.detectorFactory = Factory()
+    #################### Change these settings based on trackmate parameters #####################################
+    settings.detectorSettings = {
+        "DO_SUBPIXEL_LOCALIZATION": True,
+        "RADIUS": 10.500,
+        "TARGET_CHANNEL": 1,
+        "THRESHOLD": 1.000,
+        "DO_MEDIAN_FILTERING": False,
+    }
+    # Configure tracker
+    settings.trackerFactory = SparseLAP()
+    settings.trackerSettings = LAPUtils.getDefaultLAPSettingsMap()
+    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 12.000
+    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = 0.000
+    # Add ALL the feature analyzers known to TrackMate, via
+    # providers.
+    # They offer automatic analyzer detection, so all the
+    # available feature analyzers will be added.
+    spotAnalyzerProvider = SpotAnalyzerProvider()
+    for key in spotAnalyzerProvider.getKeys():
+        print(key)
+        settings.addSpotAnalyzerFactory(spotAnalyzerProvider.getFactory(key))
+    edgeAnalyzerProvider = EdgeAnalyzerProvider()
+    for key in edgeAnalyzerProvider.getKeys():
+        print(key)
+        settings.addEdgeAnalyzer(edgeAnalyzerProvider.getFactory(key))
+    trackAnalyzerProvider = TrackAnalyzerProvider()
+    for key in trackAnalyzerProvider.getKeys():
+        print(key)
+        settings.addTrackAnalyzer(trackAnalyzerProvider.getFactory(key))
+
+    trackmate = Trackmate(model, settings)
+    # process
+    ok = trackmate.checkInput()
+    if not ok:
+        print(str(trackmate.getErrorMessage()))
+    ok = trackmate.process()
+    if not ok:
+        print(str(trackmate.getErrorMessage()))
+    filter1 = FeatureFilter("TOTAL_INTENSITY", 83833.81, False)
+    settings.addTrackFilter(filter1)
+    jafile = jfile(xmlPath + ".xml")
+    writer = TmXmlWriter(jafile)
+    writer.appendModel(model)
+    writer.appendSettings(settings)
+    writer.writeToFile()

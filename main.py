@@ -46,7 +46,7 @@ print("Initialising ImageJ (this may take a couple of minutes first time)")
 
 # Setting the amount of RAM the Java Virtual Machine running ImageJ is allowed
 # (e.g. Xmx6g loads 6 GB of RAM)
-sj.config.add_option("-Xmx10g")
+sj.config.add_option("-Xmx16g")
 
 # Initialising PyImageJ with core ImageJ and the plugins we need.  For this, we
 # have the Time_Lapse plugin, which offers an alternative for stack focusing.

@@ -861,7 +861,7 @@ def normaliseBlur(focusUp, focus, focusDown, mu0):
     return focusUp.astype("uint8"), focus.astype("uint8"), focusDown.astype("uint8")
 
 
-def trackMate(filename, fileType="migration", r=9, thres=10.000, gap=12.000):
+def trackMate(filename):
 
     ### MAIN PROCESSING STEPS ###
     print("TrackMate")
@@ -896,7 +896,7 @@ def trackMate(filename, fileType="migration", r=9, thres=10.000, gap=12.000):
     FeatureFilter = sj.jimport("fiji.plugin.trackmate.features.FeatureFilter")
     ImagePlus = sj.jimport("ij.ImagePlus")
 
-    stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/{fileType}{filename}.tif"
+    stack_path = f"/Users/jt15004/Documents/Coding/python/processData/datProcessing/{filename}/migration{filename}.tif"
     xmlPath = (stack_path.rsplit(".tif"))[0]
     newXML = open(xmlPath + ".xml", "w")
 
@@ -909,16 +909,16 @@ def trackMate(filename, fileType="migration", r=9, thres=10.000, gap=12.000):
     #################### Change these settings based on trackmate parameters #####################################
     settings.detectorSettings = {
         "DO_SUBPIXEL_LOCALIZATION": True,
-        "RADIUS": r,
+        "RADIUS": 9.000,
         "TARGET_CHANNEL": 1,
-        "THRESHOLD": thres,
+        "THRESHOLD": 10.000,
         "DO_MEDIAN_FILTERING": False,
     }
     # Configure tracker
     settings.trackerFactory = SparseLAP()
     settings.trackerSettings = LAPUtils.getDefaultLAPSettingsMap()
-    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 12.000
-    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = gap
+    settings.trackerSettings["LINKING_MAX_DISTANCE"] = 12.0
+    settings.trackerSettings["GAP_CLOSING_MAX_DISTANCE"] = 12.0
     # Add ALL the feature analyzers known to TrackMate, via
     # providers.
     # They offer automatic analyzer detection, so all the
@@ -1227,7 +1227,7 @@ def getBinary(filename):
         img = sm.io.imread(foldername + "/tracked_cells_resized.tif").astype(float)
         track_vid.append(img)
 
-        img = sm.io.imread(foldername + "/T1s.tif").astype(float)
+        img = sm.io.imread(foldername + "/stable_T1s.tif").astype(float)
         T1_vid.append(img)
 
     data = np.asarray(binary_vid, "uint8")
@@ -1237,7 +1237,7 @@ def getBinary(filename):
     tifffile.imwrite(f"datProcessing/{filename}/binaryTracks{filename}.tif", data)
 
     data = np.asarray(T1_vid, "uint8")
-    tifffile.imwrite(f"datProcessing/{filename}/T1{filename}.tif", data)
+    tifffile.imwrite(f"datProcessing/{filename}/T1s{filename}.tif", data)
 
 
 def calShape(filename):

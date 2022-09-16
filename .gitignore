@@ -10,3 +10,5 @@ wekaWoundBourdary.tif
 cellBoundary.model
 wound.model
 __pycache__
+image
+src

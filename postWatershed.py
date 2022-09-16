@@ -80,7 +80,7 @@ for filename in filenames:
     print("-----------------------------------------------------------")
     print("")
 
-    path_to_file = f"datProcessing/{filename}/binary{filename}.tif"
+    path_to_file = f"datProcessing/{filename}/T1s{filename}.tif"
     if False == exists(path_to_file):
         print("Collecting binary images")
         functions.getBinary(filename)

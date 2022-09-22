@@ -80,7 +80,12 @@ def process_stack(ij, filename):
 
     if True:
         ecad = np.asarray(ecad, "uint8")
-        tifffile.imwrite(f"datProcessing/{filename}/ecadHeight{filename}.tif", ecad)
+        tifffile.imwrite(
+            f"datProcessing/{filename}/ecadHeight{filename}.tif",
+            ecad,
+            imagej=True,
+            metadata={"axes": "TZYX"},
+        )
     if False:
         h2 = np.asarray(h2, "uint8")
         tifffile.imwrite(f"datProcessing/{filename}/h2Height{filename}.tif", h2)
@@ -790,6 +795,27 @@ def deepLearningEcad(filename):
     inputVid = np.asarray(inputVid, "uint8")
     tifffile.imwrite(
         f"datProcessing/dat_pred/{filename}/ecadBlur3{filename}.tif",
+        inputVid,
+    )
+
+
+def deepLearningOutPlane(filename):
+
+    print("Detecting Tissue Deep Learning Input")
+
+    stack = sm.io.imread(f"datProcessing/{filename}/ecadHeight{filename}.tif").astype(
+        int
+    )
+    focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
+
+    T = stack.shape[0]
+    inputVid = np.zeros([T, 512, 512, 3])
+    inputVid[:, :, :, 0], inputVid[:, :, :, 1] = blurFocusStack(stack, 7)[0:2]
+    inputVid[:, :, :, 2] = focus[:, :, :, 0]
+
+    inputVid = np.asarray(inputVid, "uint8")
+    tifffile.imwrite(
+        f"datProcessing/dat_pred/{filename}/tissue{filename}.tif",
         inputVid,
     )
 

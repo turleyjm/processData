@@ -5,6 +5,7 @@ import os
 import scyjava as sj
 import functions
 from os.path import exists
+from datetime import datetime
 
 from pathlib import Path
 import utils as util
@@ -21,7 +22,7 @@ print("Processing image")
 
 for filename in filenames:
     print("-----------------------------------------------------------")
-    print(f"{filename}")
+    print(f"{filename}" + datetime.now().strftime(" %H:%M:%S"))
     print("-----------------------------------------------------------")
     print("")
 
@@ -50,3 +51,6 @@ for filename in filenames:
     if False == exists(path_to_file):
         print("Save for Segmentation")
         functions.saveForSeg(filename)
+
+# At this point the analysis is complete
+print("Complete")

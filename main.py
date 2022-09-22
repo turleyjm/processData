@@ -5,6 +5,7 @@ import os
 import scyjava as sj
 import functions
 from os.path import exists
+from datetime import datetime
 
 from pathlib import Path
 import utils as util
@@ -77,7 +78,7 @@ print("Processing image")
 
 for filename in filenames:
     print("-----------------------------------------------------------")
-    print(f"{filename}")
+    print(f"{filename}" + datetime.now().strftime(" %H:%M:%S"))
     print("-----------------------------------------------------------")
     print("")
     path_to_file = f"datProcessing/{filename}/migration{filename}.tif"
@@ -94,6 +95,10 @@ for filename in filenames:
     path_to_file = f"datProcessing/dat_pred/{filename}/ecadBlur3{filename}.tif"
     if False == exists(path_to_file):
         functions.deepLearningEcad(filename)
+
+    path_to_file = f"datProcessing/dat_pred/{filename}/tissue{filename}.tif"
+    if False == exists(path_to_file):
+        functions.deepLearningOutPlane(filename)
 
     path_to_file = f"datProcessing/{filename}/migration{filename}.xml"
     if False == exists(path_to_file):

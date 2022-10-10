@@ -26,10 +26,10 @@ for filename in filenames:
     print("-----------------------------------------------------------")
     print("")
 
-    path_to_file = f"datProcessing/{filename}/outPlane{filename}.tif"
-    if False == exists(path_to_file):
-        print("Out of Plane Zones")
-        functions.outPlane(filename)
+    # path_to_file = f"datProcessing/{filename}/outPlane{filename}.tif"
+    # if False == exists(path_to_file):
+    #     print("Out of Plane Zones")
+    #     functions.outPlane(filename)
 
     if "Wound" in filename:
         path_to_file = f"datProcessing/{filename}/woundsite{filename}.pkl"
@@ -42,15 +42,15 @@ for filename in filenames:
             print("Make Distance")
             functions.distance(filename)
 
-    path_to_file = f"datProcessing/{filename}/angle{filename}.tif"
-    if False == exists(path_to_file):
-        print("Make Angle")
-        functions.angle(filename)
+    # path_to_file = f"datProcessing/{filename}/angle{filename}.tif"
+    # if False == exists(path_to_file):
+    #     print("Make Angle")
+    #     functions.angle(filename)
 
-    path_to_file = f"datProcessing/{filename}/imagesForSeg/ecadProb{filename}_000.tif"
-    if False == exists(path_to_file):
-        print("Save for Segmentation")
-        functions.saveForSeg(filename)
+    # path_to_file = f"datProcessing/{filename}/imagesForSeg/ecadProb{filename}_000.tif"
+    # if False == exists(path_to_file):
+    #     print("Save for Segmentation")
+    #     functions.saveForSeg(filename)
 
 # At this point the analysis is complete
 print("Complete")

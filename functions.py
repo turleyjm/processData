@@ -977,6 +977,7 @@ def trackMate(filename):
     writer.appendModel(model)
     writer.appendSettings(settings)
     writer.writeToFile()
+    imp.close()
 
 
 def trackmate_vertices_import(trackmate_xml_path, get_tracks=False):
@@ -1615,3 +1616,4 @@ def trackMateDiv(filename):
     writer.appendModel(model)
     writer.appendSettings(settings)
     writer.writeToFile()
+    imp.close()

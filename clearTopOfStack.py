@@ -8,7 +8,7 @@ import skimage as sm
 import skimage.io
 import tifffile
 
-filename = "WoundXLJNK09"
+filename = "UnwoundJNK15"
 stackFile = f"datProcessing/{filename}/{filename}.tif"
 stack = sm.io.imread(stackFile).astype(int)
 T, Z, C, X, Y = stack.shape
@@ -20,14 +20,17 @@ depth = []
 if True:
     # Settings Ecad Time:Depth
 
-    # time = [2, 5, 7, 9, 29]
-    # depth = np.array([1, 4, 7, 10, 12]) + 1
+    time = [26, 32, 38, 57, 61, 65]
+    depth = np.array([1, 2, 3, 5, 7, 9]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
 
 if True:
     # Settings H2 Time:Depth
+
+    # time = [0, 18, 24, 25, 30, 34, 58, 67, 72, 76]
+    # depth = np.array([3, 4, 5, 6, 7, 8, 10, 11, 12, 15]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 1] = zero[t:, :z, 1]

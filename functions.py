@@ -96,7 +96,7 @@ def process_stack(ij, filename):
     ecadFocus = focusStack(ecad, 7)[1]
     h2Focus = focusStack(h2, 7)[1]
 
-    if False:
+    if True:
         ecadFocus = np.asarray(ecadFocus, "uint8")
         tifffile.imwrite(
             f"datProcessing/{filename}/ecadBleach{filename}.tif", ecadFocus
@@ -806,12 +806,10 @@ def deepLearningOutPlane(filename):
     stack = sm.io.imread(f"datProcessing/{filename}/ecadHeight{filename}.tif").astype(
         int
     )
-    focus = sm.io.imread(f"datProcessing/{filename}/focus{filename}.tif").astype(int)
 
     T = stack.shape[0]
     inputVid = np.zeros([T, 512, 512, 3])
-    inputVid[:, :, :, 0], inputVid[:, :, :, 1] = blurFocusStack(stack, 7)[0:2]
-    inputVid[:, :, :, 2] = focus[:, :, :, 0]
+    inputVid[:, :, :, 0], inputVid[:, :, :, 1], inputVid[:, :, :, 2] = blurFocusStack(stack, 7)
 
     inputVid = np.asarray(inputVid, "uint8")
     tifffile.imwrite(

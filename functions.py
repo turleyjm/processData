@@ -96,7 +96,7 @@ def process_stack(ij, filename):
     ecadFocus = focusStack(ecad, 7)[1]
     h2Focus = focusStack(h2, 7)[1]
 
-    if True:
+    if False:
         ecadFocus = np.asarray(ecadFocus, "uint8")
         tifffile.imwrite(
             f"datProcessing/{filename}/ecadBleach{filename}.tif", ecadFocus

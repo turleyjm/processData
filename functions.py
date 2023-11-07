@@ -265,7 +265,7 @@ def getSurface(ecad):
         for z in range(Z):
             win_mean = ndimage.uniform_filter(ecad[t, z], (40, 40))
             win_sqr_mean = ndimage.uniform_filter(ecad[t, z] ** 2, (40, 40))
-            variance[t, z] = win_sqr_mean - win_mean ** 2
+            variance[t, z] = win_sqr_mean - win_mean**2
 
     win_sqr_mean = 0
     win_mean = 0
@@ -341,7 +341,7 @@ def focusStack(image, focusRange):
             winSqrMean = ndimage.uniform_filter(
                 image[t, z] ** 2, (focusRange, focusRange)
             )
-            variance[t, z] = winSqrMean - winMean ** 2
+            variance[t, z] = winSqrMean - winMean**2
 
     varianceMax = np.max(variance, axis=1)
 
@@ -806,10 +806,17 @@ def deepLearningOutPlane(filename):
     stack = sm.io.imread(f"datProcessing/{filename}/ecadHeight{filename}.tif").astype(
         int
     )
+    stackH2 = sm.io.imread(f"datProcessing/{filename}/migration{filename}.tif").astype(
+        int
+    )
 
     T = stack.shape[0]
     inputVid = np.zeros([T, 512, 512, 3])
-    inputVid[:, :, :, 0], inputVid[:, :, :, 1], inputVid[:, :, :, 2] = blurFocusStack(stack, 7)
+    inputVid[:, :, :, 0], inputVid[:, :, :, 1], inputVid[:, :, :, 2] = blurFocusStack(
+        stack, 7
+    )
+    h2 = focusStack(stackH2, 7)[1]
+    inputVid[:, :, :, 2] = normalise(h2, "UPPER_Q", 90)
 
     inputVid = np.asarray(inputVid, "uint8")
     tifffile.imwrite(
@@ -835,7 +842,7 @@ def blurFocusStack(vid, focusRange):
             winSqrMean = ndimage.uniform_filter(
                 vid[t, z] ** 2, (focusRange, focusRange)
             )
-            variance[t, z] = winSqrMean - winMean ** 2
+            variance[t, z] = winSqrMean - winMean**2
 
     varianceMax = np.max(variance, axis=1)
 
@@ -1490,7 +1497,7 @@ def nucleusShape(ij, filename, model_path):
                                         "Z": df2["z"].iloc[j],
                                         "T": df2["t"].iloc[j],
                                         "Polygon": polygon,
-                                        "Area": cell.area(polygon) * scale ** 2,
+                                        "Area": cell.area(polygon) * scale**2,
                                         "Shape Orientation": (
                                             cell.orientation(polygon) * 180 / np.pi - 90
                                         )

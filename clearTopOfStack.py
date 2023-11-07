@@ -8,7 +8,7 @@ import skimage as sm
 import skimage.io
 import tifffile
 
-filename = "Unwoundrpr10"
+filename = "WoundLrpr05"
 stackFile = f"datProcessing/{filename}/{filename}.tif"
 stack = sm.io.imread(stackFile).astype(int)
 T, Z, C, X, Y = stack.shape
@@ -20,8 +20,8 @@ depth = []
 if True:
     # Settings Ecad Time:Depth
 
-    time = [41, 45, 50, 54, 58, 65, 68, 81]
-    depth = np.array([2, 4, 6, 8, 12, 15, 18, 21]) + 1
+    # time = [3, 32, 38, 50, 61]
+    # depth = np.array([3, 5, 7, 9, 11]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 0] = zero[t:, :z, 0]
@@ -29,8 +29,8 @@ if True:
 if True:
     # Settings H2 Time:Depth
 
-    # time = [0, 18, 24, 25, 30, 34, 58, 67, 72, 76]
-    # depth = np.array([3, 4, 5, 6, 7, 8, 10, 11, 12, 15]) + 1
+    # time = [26, 27]
+    # depth = np.array([3, 9]) + 1
 
     for t, z in zip(time, depth):
         stack[t:, :z, 1] = zero[t:, :z, 1]
@@ -39,8 +39,8 @@ if True:
 if False:
     # Settings Ecad Time:Depth
 
-    time = [0]
-    depth = np.array([0]) + 1
+    time = [1, 3, 4, 5]
+    depth = np.array([4, 3, 2, 1]) + 1
 
     for t, z in zip(time, depth):
         stack[:t, :z, 0] = zero[:t, :z, 0]
@@ -48,8 +48,8 @@ if False:
 if False:
     # Settings H2 Time:Depth
 
-    time = [18, 31, 35, 92]
-    depth = np.array([10, 7, 5, 4]) + 1
+    # time = [18, 31, 35, 92]
+    # depth = np.array([10, 7, 5, 4]) + 1
 
     for t, z in zip(time, depth):
         stack[:t, :z, 1] = zero[:t, :z, 1]
